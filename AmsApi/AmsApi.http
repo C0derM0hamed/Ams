@@ -1,0 +1,6 @@
+@AmsApi_HostAddress = http://localhost:5028
+
+GET {{AmsApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

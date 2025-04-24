@@ -1,4 +1,4 @@
-﻿
+﻿using System.Text.RegularExpressions;
 namespace AmsApi.Controllers;
 
 [ApiController]
@@ -58,11 +58,19 @@ public class AttendeesController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest("No file uploaded.");
 
-        var fileName = $"{Guid.NewGuid()}_{file.FileName}";
-        var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+        var attendee = await _attendeeService.GetByIdAsync(id);
+        if (attendee == null)
+            return NotFound("Attendee not found.");
+
+        var sanitizedFullName = attendee.FullName.Trim().ToLower().Replace(" ", "_");
+        sanitizedFullName = Regex.Replace(sanitizedFullName, @"[^a-z0-9_]", "");
+        var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "dataset", $"attendee_{attendee.Id}");
 
         if (!Directory.Exists(folderPath))
             Directory.CreateDirectory(folderPath);
+
+        var fileExtension = Path.GetExtension(file.FileName);
+        var fileName = $"{sanitizedFullName}{fileExtension}";
 
         var filePath = Path.Combine(folderPath, fileName);
 
@@ -71,23 +79,27 @@ public class AttendeesController : ControllerBase
             await file.CopyToAsync(stream);
         }
 
-        var attendee = await _attendeeService.UpdateAsync(id, new UpdateAttendeeDto
+        // تحديث فقط لمسار الصورة
+        attendee.ImagePath = $"/dataset/attendee_{attendee.Id}/{fileName}";
+
+        await _attendeeService.UpdateAsync(id, new UpdateAttendeeDto
         {
-            // نحدّث المسار داخل attendee
-            // نخزن فقط اسم الملف وليس المسار الكامل
-            FullName = null,
-            Email = null,
-            Password = null
+            FullName = attendee.FullName,
+            Email = attendee.Email,
+            Password = attendee.Password
         });
 
-        if (attendee == null) return NotFound();
-
-        attendee.ImagePath = $"/images/{fileName}";
+        // ✅ هنا بنستخدم AutoMapper عشان يشتغل الريسولفر
+        var result = _mapper.Map<AttendeeDto>(attendee);
 
         return Ok(new
         {
             message = "Image uploaded successfully",
-            imageUrl = attendee.ImagePath
+            imageUrl = result.ImageUrl
         });
     }
+
+
+
+
 }

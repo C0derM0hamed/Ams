@@ -8,4 +8,6 @@ public class Attendee
     public string Password { get; set; } = string.Empty;
     public string? ImagePath { get; set; } // ممكن يكون null
     public List<int> SubjectIds { get; set; } = new();
+    public double[]? Embedding { get; set; }
+    public Guid? FaceId { get; set; }
 }

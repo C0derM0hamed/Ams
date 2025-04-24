@@ -1,4 +1,6 @@
 ﻿
+using AmsApi.Models;
+
 namespace AmsApi.Controllers;
 
 [ApiController]
@@ -70,11 +72,18 @@ public class InstructorsController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest("No file uploaded.");
 
-        var fileName = $"{Guid.NewGuid()}_{file.FileName}";
-        var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+        var instructor = await _instructorService.GetByIdAsync(id);
+        if (instructor == null)
+            return NotFound("Instructor not found.");
+
+        var sanitizedFullName = instructor.FullName.Trim().ToLower().Replace(" ", "_");
+        var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "dataset", $"instructor_{instructor.Id}");
 
         if (!Directory.Exists(folderPath))
             Directory.CreateDirectory(folderPath);
+
+        var fileExtension = Path.GetExtension(file.FileName);
+        var fileName = $"{sanitizedFullName}{fileExtension}";
 
         var filePath = Path.Combine(folderPath, fileName);
 
@@ -83,17 +92,24 @@ public class InstructorsController : ControllerBase
             await file.CopyToAsync(stream);
         }
 
-        var instructor = await _instructorService.UpdateAsync(id, new UpdateInstructorDto());
+        // تحديث فقط لمسار الصورة
+        instructor.ImagePath = $"/dataset/instructor_{instructor.Id}/{fileName}";
 
-        if (instructor == null) return NotFound();
+        await _instructorService.UpdateAsync(id, new UpdateInstructorDto
+        {
+            FullName = instructor.FullName,
+            Email = instructor.Email,
+            Password = instructor.Password
+        });
 
-        instructor.ImagePath = $"/images/{fileName}";
-        await _instructorService.UpdateAsync(id, new UpdateInstructorDto()); // نحفظ الصورة
+        // ✅ تحويل لـ DTO علشان يشتغل الريسولفر
+        var result = _mapper.Map<InstructorDto>(instructor);
 
         return Ok(new
         {
             message = "Image uploaded successfully",
-            imageUrl = $"{Request.Scheme}://{Request.Host}/images/{fileName}"
+            imageUrl = result.ImageUrl
         });
     }
+
 }

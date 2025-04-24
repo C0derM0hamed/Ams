@@ -38,13 +38,20 @@ public static class AppConfiguration
         });
 
         // خدمات المشروع
+        services.AddTransient<AttendeeImageUrlResolver>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAttendeeService, AttendeeService>();
         services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IInstructorService, InstructorService>();
+        
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<ISubjectDateService, SubjectDateService>();
         services.AddScoped<IConfigService, ConfigService>();
+
+        services.AddScoped<FaceDatasetUploaderService>();
+
+        services.AddHttpClient();
+        services.AddHttpClient<FaceRecognitionService>();
 
         // AutoMapper
         services.AddAutoMapper(typeof(Program));
@@ -53,14 +60,16 @@ public static class AppConfiguration
 
     public static void UseCustomMiddleware(this WebApplication app)
     {
-        // الملفات الثابتة (صور وغيره)
+
+
+        // ملفات الصور المخزنة في wwwroot/dataset
         app.UseStaticFiles(new StaticFileOptions
         {
             FileProvider = new PhysicalFileProvider(
-                Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")),
+           Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")),
             RequestPath = ""
-        });
 
+        });
         app.UseMiddleware<ExceptionMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();

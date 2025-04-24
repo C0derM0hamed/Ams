@@ -1,19 +1,25 @@
-﻿namespace AmsApi.Helpers;
+﻿using AmsApi.DTOs;
+using AmsApi.Models;
+using AutoMapper;
 
-public class InstructorImageUrlResolver : IValueResolver<Instructor, InstructorDto, string?>
+namespace AmsApi.Helpers
 {
-    private readonly IHttpContextAccessor _http;
-
-    public InstructorImageUrlResolver(IHttpContextAccessor http)
+    public class InstructorImageUrlResolver : IValueResolver<Instructor, InstructorDto, string?>
     {
-        _http = http;
-    }
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public string? Resolve(Instructor source, InstructorDto destination, string? destMember, ResolutionContext context)
-    {
-        if (string.IsNullOrEmpty(source.ImagePath)) return null;
+        public InstructorImageUrlResolver(IHttpContextAccessor httpContextAccessor)
+        {
+            _httpContextAccessor = httpContextAccessor;
+        }
 
-        var request = _http.HttpContext?.Request;
-        return $"{request?.Scheme}://{request?.Host}{source.ImagePath}";
+        public string? Resolve(Instructor source, InstructorDto destination, string? destMember, ResolutionContext context)
+        {
+            if (string.IsNullOrEmpty(source.ImagePath)) return null;
+
+            var request = _httpContextAccessor.HttpContext?.Request;
+            var baseUrl = $"{request?.Scheme}://{request?.Host}";
+            return baseUrl + source.ImagePath;
+        }
     }
 }

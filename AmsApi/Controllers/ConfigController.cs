@@ -44,4 +44,16 @@ public class ConfigController : ControllerBase
         var isEnabled = _configService.IsFaceRecognitionEnabled();
         return Ok(new { faceRecognition = isEnabled });
     }
+
+    [HttpPost("upload-dataset")]
+    public async Task<IActionResult> UploadDataset()
+    {
+        var success = await _configService.UploadDatasetAsync();
+        if (!success)
+            return StatusCode(500, "❌ Failed to upload dataset");
+
+        return Ok(new { message = "✅ Dataset uploaded successfully to Python service" });
+    }
+
+
 }

@@ -1,22 +1,35 @@
-﻿using AmsApi.DTOs;
-using AmsApi.Interfaces;
+﻿using AmsApi.Interfaces;
 
-namespace AmsApi.Services
+namespace AmsApi.Services;
+
+public class ConfigService : IConfigService
 {
-    public class ConfigService : IConfigService
+    private static bool _faceRecognitionEnabled = false;
+    private readonly FaceRecognitionService _faceRecognition;
+    public ConfigService(FaceRecognitionService faceRecognition)
     {
-        public Task<string> TrainClassifierAsync(ClassifierConfigDto dto)
-        {
-            // mock logic
-            var message = $"Classifier trained. Info: {dto.Info ?? "default"}";
-            return Task.FromResult(message);
-        }
-
-        public Task<string> UpdateFaceModelAsync(FaceRecognitionDto dto)
-        {
-            // mock logic
-            var message = $"Face model '{dto.ModelName}' updated with threshold {dto.Threshold}";
-            return Task.FromResult(message);
-        }
+        _faceRecognition = faceRecognition;
     }
+    public Task<bool> TrainClassifierAsync()
+    {
+        // هنا ممكن تنادي Python script أو AI model
+        Console.WriteLine("Training classifier...");
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> ToggleFaceRecognitionAsync(bool enabled)
+    {
+        _faceRecognitionEnabled = enabled;
+        return Task.FromResult(true);
+    }
+
+    public bool IsFaceRecognitionEnabled()
+    {
+        return _faceRecognitionEnabled;
+    }
+    public async Task<bool> UploadDatasetAsync()
+    {
+        return await _faceRecognition.UploadDatasetAsync();
+    }
+
 }

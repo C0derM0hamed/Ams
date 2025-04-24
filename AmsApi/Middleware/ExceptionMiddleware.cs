@@ -1,4 +1,6 @@
-﻿namespace AmsApi.Middleware;
+﻿using System.Text.Json;
+using System.Net;
+namespace AmsApi.Middleware;
 
 public class ExceptionMiddleware
 {

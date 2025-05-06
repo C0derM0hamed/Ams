@@ -17,58 +17,14 @@ public class FaceCheckInController : ControllerBase
         _faceService = faceService;
         _context = context;
     }
-
-    [HttpPost("check")]
-    public async Task<IActionResult> CheckFace(
-     [FromForm] IFormFile image,
-     [FromForm] int subjectId
- )
+    [HttpPost("detect-face")]
+    public async Task<IActionResult> DetectFace(IFormFile image, [FromServices] FaceRecognitionService service)
     {
-        if (image == null || image.Length == 0)
-            return BadRequest("Image is required.");
-
-        var predictedName = await _faceService.ClassifyFaceAsync(image);
-        if (string.IsNullOrWhiteSpace(predictedName))
-            return StatusCode(500, "Face classification failed.");
-
-        var matchedAttendee = await _context.Attendees
-            .FirstOrDefaultAsync(a => a.FullName.ToLower() == predictedName.ToLower());
-
-        if (matchedAttendee == null)
-            return NotFound("Student not found.");
-
-        // هل هو فعلاً مسجل في المادة؟
-        if (!matchedAttendee.SubjectIds.Contains(subjectId))
-            return BadRequest("Student not registered in this subject.");
-
-        var today = DateTime.UtcNow.Date;
-
-        var existingAttendance = await _context.Attendances
-            .FirstOrDefaultAsync(a =>
-                a.SubjectId == subjectId &&
-                a.AttendeeId == matchedAttendee.Id &&
-                a.Date.Date == today);
-
-        if (existingAttendance == null)
-        {
-            _context.Attendances.Add(new Attendance
-            {
-                SubjectId = subjectId,
-                AttendeeId = matchedAttendee.Id,
-                Date = today,
-                IsPresent = true
-            });
-
-            await _context.SaveChangesAsync();
-        }
-
-        return Ok(new
-        {
-            message = "Attendance marked successfully",
-            student = matchedAttendee.FullName,
-            date = today.ToString("yyyy-MM-dd")
-        });
+        using var stream = image.OpenReadStream();
+        var result = await service.ClassifyAsync(stream, image.FileName);
+        return Ok(result);
     }
 
-
 }
+
+

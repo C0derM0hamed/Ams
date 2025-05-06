@@ -27,9 +27,9 @@ public class ConfigService : IConfigService
     {
         return _faceRecognitionEnabled;
     }
-    public async Task<bool> UploadDatasetAsync()
-    {
-        return await _faceRecognition.UploadDatasetAsync();
-    }
 
+    public Task<bool> UploadDatasetAsync()
+    {
+        throw new NotImplementedException();
+    }
 }

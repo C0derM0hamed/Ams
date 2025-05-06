@@ -49,7 +49,7 @@ public static class AppConfiguration
         services.AddScoped<IConfigService, ConfigService>();
 
         services.AddScoped<FaceDatasetUploaderService>();
-
+        services.AddHttpClient<FaceRecognitionService>();
         services.AddHttpClient();
         services.AddHttpClient<FaceRecognitionService>();
 

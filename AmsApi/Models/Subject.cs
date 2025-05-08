@@ -9,7 +9,10 @@ public class Subject
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
 
-    [NotMapped]
-    public List<int> AttendeeIds { get; set; } = new();
-    public List<int> InstructorIds { get; set; } = new();
+    // Foreign Key to Instructor (One-to-Many)
+    public int InstructorId { get; set; }  // This will store the Instructor's Id
+    public Instructor Instructor { get; set; }  // Navigation Property to Instructor
+    // Navigation Property to AttendeeSubject (Many-to-Many)
+    public List<AttendeeSubject> AttendeeSubjects { get; set; } = new();
+
 }

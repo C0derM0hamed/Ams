@@ -1,4 +1,5 @@
-﻿using QuestPDF.Fluent;
+﻿using AmsApi.Models;
+using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 namespace AmsApi.Services;
@@ -59,20 +60,24 @@ public class AttendanceService : IAttendanceService
         if (subject == null)
             return null;
 
+        // جلب الـ Attendees المرتبطين بالـ Subject عبر AttendeeSubjects
         var subjectAttendees = await _context.Attendees
-            .Where(a => a.SubjectIds.Contains(subjectId))
+        .Where(a => a.AttendeeSubjects.Any(ad => ad.SubjectId == subjectId)) // استخدام AttendeeSubjects بدلاً من SubjectIds
             .ToListAsync();
 
+        // جلب الحضور بناءً على الـ SubjectId و التاريخ
         var presentIds = await _context.Attendances
             .Where(a => a.SubjectId == subjectId && a.Date.Date == date.Date)
             .Select(a => a.AttendeeId)
             .ToListAsync();
 
+        // تحديد الحضور
         var present = subjectAttendees
             .Where(a => presentIds.Contains(a.Id))
             .Select(a => a.FullName)
             .ToList();
 
+        // تحديد الغياب
         var absent = subjectAttendees
             .Where(a => !presentIds.Contains(a.Id))
             .Select(a => a.FullName)
@@ -86,6 +91,7 @@ public class AttendanceService : IAttendanceService
             Absent = absent
         };
     }
+
 
     public byte[] GenerateAttendancePdf(string subjectName, DateTime date, List<string> present, List<string> absent)
     {

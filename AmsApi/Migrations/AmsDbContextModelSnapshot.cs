@@ -22,6 +22,37 @@ namespace AmsApi.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("AmsApi.Models.Admin", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Password")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Admins");
+                });
+
             modelBuilder.Entity("AmsApi.Models.Attendance", b =>
                 {
                     b.Property<int>("Id")
@@ -58,6 +89,9 @@ namespace AmsApi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AdminId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -65,8 +99,8 @@ namespace AmsApi.Migrations
                     b.PrimitiveCollection<string>("Embedding")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("FaceId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int?>("FaceId")
+                        .HasColumnType("int");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -79,13 +113,26 @@ namespace AmsApi.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.PrimitiveCollection<string>("SubjectIds")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
+                    b.HasIndex("AdminId");
+
                     b.ToTable("Attendees");
+                });
+
+            modelBuilder.Entity("AmsApi.Models.AttendeeSubject", b =>
+                {
+                    b.Property<int>("AttendeeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("int");
+
+                    b.HasKey("AttendeeId", "SubjectId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.ToTable("AttendeeSubjects");
                 });
 
             modelBuilder.Entity("AmsApi.Models.Instructor", b =>
@@ -111,10 +158,6 @@ namespace AmsApi.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.PrimitiveCollection<string>("SubjectIds")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
 
                     b.ToTable("Instructors");
@@ -131,15 +174,16 @@ namespace AmsApi.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.PrimitiveCollection<string>("InstructorIds")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("InstructorId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("InstructorId");
 
                     b.ToTable("Subjects");
                 });
@@ -161,6 +205,67 @@ namespace AmsApi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SubjectDates");
+                });
+
+            modelBuilder.Entity("AmsApi.Models.Attendee", b =>
+                {
+                    b.HasOne("AmsApi.Models.Admin", "Admin")
+                        .WithMany("Attendees")
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+                });
+
+            modelBuilder.Entity("AmsApi.Models.AttendeeSubject", b =>
+                {
+                    b.HasOne("AmsApi.Models.Attendee", "Attendee")
+                        .WithMany("AttendeeSubjects")
+                        .HasForeignKey("AttendeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AmsApi.Models.Subject", "Subject")
+                        .WithMany("AttendeeSubjects")
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Attendee");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("AmsApi.Models.Subject", b =>
+                {
+                    b.HasOne("AmsApi.Models.Instructor", "Instructor")
+                        .WithMany("Subjects")
+                        .HasForeignKey("InstructorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instructor");
+                });
+
+            modelBuilder.Entity("AmsApi.Models.Admin", b =>
+                {
+                    b.Navigation("Attendees");
+                });
+
+            modelBuilder.Entity("AmsApi.Models.Attendee", b =>
+                {
+                    b.Navigation("AttendeeSubjects");
+                });
+
+            modelBuilder.Entity("AmsApi.Models.Instructor", b =>
+                {
+                    b.Navigation("Subjects");
+                });
+
+            modelBuilder.Entity("AmsApi.Models.Subject", b =>
+                {
+                    b.Navigation("AttendeeSubjects");
                 });
 #pragma warning restore 612, 618
         }

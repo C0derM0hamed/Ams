@@ -43,7 +43,7 @@ public static class AppConfiguration
         services.AddScoped<IAttendeeService, AttendeeService>();
         services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IInstructorService, InstructorService>();
-        
+
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<ISubjectDateService, SubjectDateService>();
         services.AddScoped<IConfigService, ConfigService>();

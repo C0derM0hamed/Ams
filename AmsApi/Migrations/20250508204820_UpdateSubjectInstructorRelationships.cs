@@ -5,7 +5,7 @@
 namespace AmsApi.Migrations
 {
     /// <inheritdoc />
-    public partial class InitAttendees : Migration
+    public partial class UpdateSubjectInstructorRelationships : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

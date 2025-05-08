@@ -64,60 +64,78 @@ public class SubjectService : ISubjectService
         return true;
     }
 
+    // تعديل إضافة Attendee إلى Subject باستخدام AttendeeSubject
     public async Task<bool> AddAttendeeToSubject(int subjectId, int attendeeId)
     {
         var subject = await _context.Subjects.FindAsync(subjectId);
         if (subject == null) return false;
 
-        if (!subject.AttendeeIds.Contains(attendeeId))
+        // تحقق من إذا كان الـ AttendeeSubject موجودًا بالفعل
+        var existingAttendeeSubject = await _context.AttendeeSubjects
+            .FirstOrDefaultAsync(sd => sd.SubjectId == subjectId && sd.AttendeeId == attendeeId);
+
+        if (existingAttendeeSubject == null)
         {
-            subject.AttendeeIds.Add(attendeeId);
+            var attendeeSubject = new AttendeeSubject
+            {
+                AttendeeId = attendeeId,
+                SubjectId = subjectId
+            };
+
+            _context.AttendeeSubjects.Add(attendeeSubject);
             await _context.SaveChangesAsync();
         }
 
         return true;
     }
 
+    // تعديل إزالة Attendee من Subject باستخدام AttendeeSubject
     public async Task<bool> RemoveAttendeeFromSubject(int subjectId, int attendeeId)
     {
         var subject = await _context.Subjects.FindAsync(subjectId);
         if (subject == null) return false;
 
-        if (subject.AttendeeIds.Contains(attendeeId))
+        var attendeeSubject = await _context.AttendeeSubjects
+            .FirstOrDefaultAsync(sd => sd.SubjectId == subjectId && sd.AttendeeId == attendeeId);
+
+        if (attendeeSubject != null)
         {
-            subject.AttendeeIds.Remove(attendeeId);
+            _context.AttendeeSubjects.Remove(attendeeSubject);
             await _context.SaveChangesAsync();
         }
 
         return true;
     }
 
+    // تعديل إضافة Instructor إلى Subject باستخدام AttendeeSubject
     public async Task<bool> AddInstructorToSubject(int subjectId, int instructorId)
     {
         var subject = await _context.Subjects.FindAsync(subjectId);
         if (subject == null) return false;
 
-        if (!subject.InstructorIds.Contains(instructorId))
+        // تحقق من أن الـ InstructorId ليس موجودًا بالفعل
+        if (subject.InstructorId != instructorId)
         {
-            subject.InstructorIds.Add(instructorId);
+            subject.InstructorId = instructorId;
             await _context.SaveChangesAsync();
         }
 
         return true;
     }
 
+    // تعديل إزالة Instructor من Subject
     public async Task<bool> RemoveInstructorFromSubject(int subjectId, int instructorId)
     {
         var subject = await _context.Subjects.FindAsync(subjectId);
         if (subject == null) return false;
 
-        if (subject.InstructorIds.Contains(instructorId))
+        // تحقق من أن الـ InstructorId موجود في المادة
+        if (subject.InstructorId == instructorId)
         {
-            subject.InstructorIds.Remove(instructorId);
+            subject.InstructorId = 0; // أو ضع الـ InstructorId كـ null إذا كنت تستخدم nullables
             await _context.SaveChangesAsync();
         }
 
         return true;
     }
-
 }

@@ -8,6 +8,7 @@ public class Instructor
     public string Password { get; set; } = string.Empty;
     public string? ImagePath { get; set; }
 
-    public List<int> SubjectIds { get; set; } = new();
+    // Navigation Property to Subjects (One-to-Many)
+    public List<Subject> Subjects { get; set; } = new();
 }
 

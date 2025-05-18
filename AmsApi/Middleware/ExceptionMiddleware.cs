@@ -1,40 +1,48 @@
 ﻿using System.Text.Json;
 using System.Net;
-namespace AmsApi.Middleware;
 
-public class ExceptionMiddleware
+namespace AmsApi.Middleware
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<ExceptionMiddleware> _logger;
-    private readonly IHostEnvironment _env;
-
-    public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger, IHostEnvironment env)
+    public class ExceptionMiddleware
     {
-        _next = next;
-        _logger = logger;
-        _env = env;
-    }
+        private readonly RequestDelegate _next;
+        private readonly ILogger<ExceptionMiddleware> _logger;
+        private readonly IHostEnvironment _env;
 
-    public async Task InvokeAsync(HttpContext context)
-    {
-        try
+        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger, IHostEnvironment env)
         {
-            await _next(context);
+            _next = next;
+            _logger = logger;
+            _env = env;
         }
-        catch (Exception ex)
+
+        public async Task InvokeAsync(HttpContext context)
         {
-            _logger.LogError(ex, ex.Message);
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            try
+            {
+                await _next(context);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+                context.Response.ContentType = "application/json";
+                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
-            var response = _env.IsDevelopment()
-                ? new ApiResponse(context.Response.StatusCode, ex.Message, ex.StackTrace?.ToString())
-                : new ApiResponse(context.Response.StatusCode, "Internal Server Error");
+                // Get inner exception if available
+                var innerMessage = ex.InnerException?.Message;
+                var fullMessage = string.IsNullOrEmpty(innerMessage)
+                    ? ex.Message
+                    : $"{ex.Message} | Inner: {innerMessage}";
 
-            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                var response = _env.IsDevelopment()
+                    ? new ApiResponse(context.Response.StatusCode, fullMessage, ex.StackTrace?.ToString())
+                    : new ApiResponse(context.Response.StatusCode, "Internal Server Error");
 
-            var json = JsonSerializer.Serialize(response, options);
-            await context.Response.WriteAsync(json);
+                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                var json = JsonSerializer.Serialize(response, options);
+
+                await context.Response.WriteAsync(json);
+            }
         }
     }
 }

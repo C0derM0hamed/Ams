@@ -2,9 +2,20 @@
 
 public interface IInstructorService
 {
-    Task<Instructor> RegisterAsync(RegisterInstructorDto dto);
-    Task<AuthResponse> LoginAsync(LoginInstructorDto dto);
-    Task<Instructor?> UpdateAsync(int id, UpdateInstructorDto dto);
-    Task<Instructor?> GetByIdAsync(int id);
-    Task<bool> DeleteAsync(int id);
+    Task<List<Instructor>> GetAllAsync();
+    Task<Instructor?> GetByIdAsync(Guid id);
+    Task<Instructor?> GetByEmailAsync(string email);
+    Task<Instructor> CreateAsync(CreateInstructorDto dto);
+    Task<Instructor?> UpdateAsync(Guid id, UpdateInstructorDto dto);
+    Task<bool> DeleteAsync(Guid id);
+
+    Task<List<Subject>> GetSubjectsForInstructorAsync(Guid instructorId);
+    Task<Subject?> GetSubjectForInstructorAsync(Guid instructorId, Guid subjectId);
+    Task<bool> AssignSubjectToInstructorAsync(Guid instructorId, Guid subjectId);
+    Task<bool> RemoveSubjectFromInstructorAsync(Guid instructorId, Guid subjectId);
+
+    /// <summary>
+    /// Saves the uploaded image and returns the file path under wwwroot/instructors/{id}/image.png
+    /// </summary>
+    Task<string> UploadImageAsync(Guid instructorId, byte[] imageBytes);
 }

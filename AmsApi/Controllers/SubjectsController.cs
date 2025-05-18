@@ -1,87 +1,121 @@
-﻿[ApiController]
-[Route("api/[controller]")]
-public class SubjectsController : ControllerBase
+﻿namespace AmsApi.Controllers
 {
-    private readonly ISubjectService _subjectService;
-
-    public SubjectsController(ISubjectService subjectService)
+    [ApiController]
+    [Route("[controller]")]
+    public class SubjectsController : ControllerBase
     {
-        _subjectService = subjectService;
-    }
+        private readonly ISubjectService _svc;
+        public SubjectsController(ISubjectService svc) => _svc = svc;
 
-    // GET /api/subjects
-    [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var result = await _subjectService.GetAllAsync();
-        return Ok(result);
-    }
+        // GET /api/subjects
+        [HttpGet]
+        public async Task<IActionResult> GetAll([FromHeader] string jwtToken)
+        {
+            var principal = JwtHelper.ValidateToken(jwtToken);
+            var role = principal?.FindFirst("role")?.Value;
+            if (principal == null || role != "Admin")
+                return Unauthorized();
+            var list = await _svc.GetAllAsync();
+            return Ok(list);
+        }
 
-    // GET /api/subjects/{id}
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
-    {
-        var result = await _subjectService.GetByIdAsync(id);
-        if (result is null) return NotFound();
-        return Ok(result);
-    }
+        // POST /api/subjects
+        [HttpPost]
+        public async Task<IActionResult> Create(
+            [FromBody] CreateSubjectDto dto,
+            [FromHeader] string jwtToken)
+        {
+            var principal = JwtHelper.ValidateToken(jwtToken);
+            var role = principal?.FindFirst("role")?.Value;
+            if (principal == null || role != "Admin")
+                return Unauthorized();
+            var subj = await _svc.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetOne), new { subjectId = subj.Id }, subj);
+        }
 
-    // POST /api/subjects
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateSubjectDto dto)
-    {
-        var result = await _subjectService.CreateAsync(dto);
-        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
-    }
+        // GET /api/subjects/{subjectId}
+        [HttpGet("{subjectId:guid}")]
+        public async Task<IActionResult> GetOne(Guid subjectId)
+        {
+            var subj = await _svc.GetByIdAsync(subjectId);
+            if (subj == null) return NotFound();
+            return Ok(subj);
+        }
 
-    // PATCH /api/subjects/{id}
-    [HttpPatch("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateSubjectDto dto)
-    {
-        var updated = await _subjectService.UpdateAsync(id, dto);
-        if (!updated) return NotFound();
-        return NoContent();
-    }
+        // PATCH /api/subjects/{subjectId}
+        [HttpPatch("{subjectId:guid}")]
+        public async Task<IActionResult> Update(
+            Guid subjectId,
+            [FromBody] UpdateSubjectDto dto,
+            [FromHeader] string jwtToken)
+        {
+            var principal = JwtHelper.ValidateToken(jwtToken);
+            var role = principal?.FindFirst("role")?.Value;
+            if (principal == null || role != "Admin")
+                return Unauthorized();
+            var updated = await _svc.UpdateAsync(subjectId, dto);
+            if (updated == null) return NotFound();
+            return Ok(updated);
+        }
 
-    // DELETE /api/subjects/{id}
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var deleted = await _subjectService.DeleteAsync(id);
-        if (!deleted) return NotFound();
-        return NoContent();
-    }
-    [HttpPost("{subjectId}/attendees/{attendeeId}")]
-    public async Task<IActionResult> AddAttendee(int subjectId, int attendeeId)
-    {
-        var result = await _subjectService.AddAttendeeToSubject(subjectId, attendeeId);
-        if (!result) return NotFound();
-        return Ok(new { message = "Attendee added to subject." });
-    }
+        // DELETE /api/subjects/{subjectId}
+        [HttpDelete("{subjectId:guid}")]
+        public async Task<IActionResult> Delete(
+            Guid subjectId,
+            [FromHeader] string jwtToken)
+        {
+            var principal = JwtHelper.ValidateToken(jwtToken);
+            var role = principal?.FindFirst("role")?.Value;
+            if (principal == null || role != "Admin")
+                return Unauthorized();
+            var ok = await _svc.DeleteAsync(subjectId);
+            if (!ok) return NotFound();
+            return NoContent();
+        }
 
-    [HttpDelete("{subjectId}/attendees/{attendeeId}")]
-    public async Task<IActionResult> RemoveAttendee(int subjectId, int attendeeId)
-    {
-        var result = await _subjectService.RemoveAttendeeFromSubject(subjectId, attendeeId);
-        if (!result) return NotFound();
-        return Ok(new { message = "Attendee removed from subject." });
+        // GET /api/subjects/{subjectId}/attendees
+        [HttpGet("{subjectId:guid}/attendees")]
+        public async Task<IActionResult> GetAttendees(
+            Guid subjectId,
+            [FromHeader] string jwtToken)
+        {
+            var principal = JwtHelper.ValidateToken(jwtToken);
+            var role = principal?.FindFirst("role")?.Value;
+            if (principal == null || role == "Attendee")
+                return Unauthorized();
+            var list = await _svc.GetAttendeesAsync(subjectId);
+            return Ok(list);
+        }
+
+        // POST /api/subjects/{subjectId}/subject_dates
+        [HttpPost("{subjectId:guid}/subject_dates")]
+        public async Task<IActionResult> AddDate(
+            Guid subjectId,
+            [FromBody] CreateSubjectDateDto dto,
+            [FromHeader] string jwtToken)
+        {
+            var principal = JwtHelper.ValidateToken(jwtToken);
+            var role = principal?.FindFirst("role")?.Value;
+            if (principal == null || role != "Admin")
+                return Unauthorized();
+            var sd = await _svc.AddSubjectDateAsync(subjectId, dto);
+            return CreatedAtAction(null, new { subjectId = subjectId, subjectDateId = sd.Id }, sd);
+        }
+
+        // DELETE /api/subjects/{subjectId}/subject_dates/{subjectDateId}
+        [HttpDelete("{subjectId:guid}/subject_dates/{subjectDateId:guid}")]
+        public async Task<IActionResult> RemoveDate(
+            Guid subjectId,
+            Guid subjectDateId,
+            [FromHeader] string jwtToken)
+        {
+            var principal = JwtHelper.ValidateToken(jwtToken);
+            var role = principal?.FindFirst("role")?.Value;
+            if (principal == null || role != "Admin")
+                return Unauthorized();
+            var ok = await _svc.RemoveSubjectDateAsync(subjectId, subjectDateId);
+            if (!ok) return NotFound();
+            return NoContent();
+        }
     }
-
-    [HttpPost("{subjectId}/instructors/{instructorId}")]
-    public async Task<IActionResult> AddInstructor(int subjectId, int instructorId)
-    {
-        var result = await _subjectService.AddInstructorToSubject(subjectId, instructorId);
-        if (!result) return NotFound();
-        return Ok(new { message = "Instructor added to subject." });
-    }
-
-    [HttpDelete("{subjectId}/instructors/{instructorId}")]
-    public async Task<IActionResult> RemoveInstructor(int subjectId, int instructorId)
-    {
-        var result = await _subjectService.RemoveInstructorFromSubject(subjectId, instructorId);
-        if (!result) return NotFound();
-        return Ok(new { message = "Instructor removed from subject." });
-    }
-
-
 }

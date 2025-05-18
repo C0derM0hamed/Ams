@@ -2,9 +2,12 @@
 {
     public interface IAttendanceService
     {
-        Task<List<AttendanceDto>> GetAttendanceBySubjectId(int subjectId);
-        Task<bool> MarkAttendance(int subjectId, int attendeeId, MarkAttendanceDto dto);
-        Task<AttendanceReportDto?> GetAttendanceReportAsync(int subjectId, DateTime date);
-        byte[] GenerateAttendancePdf(string subjectName, DateTime date, List<string> present, List<string> absent);
+        Task<List<Attendance>> GetBySubjectAsync(Guid subjectId);
+        Task<Attendance> CreateOneAsync(Guid subjectId, Guid attendeeId);
+        Task<List<Attendance>> CreateManyAsync(Guid subjectId, List<Guid> attendeeIds);
+        Task<bool> DeleteAsync(Guid attendanceId);
+        Task<Attendance> GetByIdAsync(Guid attendanceId);
     }
+
 }
+

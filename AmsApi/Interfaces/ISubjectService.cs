@@ -1,15 +1,15 @@
-﻿namespace AmsApi.Interfaces;
-
-public interface ISubjectService
+﻿namespace AmsApi.Interfaces
 {
-    Task<IEnumerable<SubjectDto>> GetAllAsync();
-    Task<SubjectDto?> GetByIdAsync(int id);
-    Task<SubjectDto> CreateAsync(CreateSubjectDto dto);
-    Task<bool> UpdateAsync(int id, UpdateSubjectDto dto);
-    Task<bool> DeleteAsync(int id);
-    Task<bool> AddAttendeeToSubject(int subjectId, int attendeeId);
-    Task<bool> RemoveAttendeeFromSubject(int subjectId, int attendeeId);
-    Task<bool> AddInstructorToSubject(int subjectId, int instructorId);
-    Task<bool> RemoveInstructorFromSubject(int subjectId, int instructorId);
+    public interface ISubjectService
+    {
+        Task<List<Subject>> GetAllAsync();
+        Task<Subject?> GetByIdAsync(Guid id);
+        Task<Subject> CreateAsync(CreateSubjectDto dto);
+        Task<Subject?> UpdateAsync(Guid id, UpdateSubjectDto dto);
+        Task<bool> DeleteAsync(Guid id);
 
+        Task<List<Attendee>> GetAttendeesAsync(Guid subjectId);
+        Task<SubjectDate> AddSubjectDateAsync(Guid subjectId, CreateSubjectDateDto dto);
+        Task<bool> RemoveSubjectDateAsync(Guid subjectId, Guid subjectDateId);
+    }
 }

@@ -2,16 +2,19 @@
 {
     public class Attendee
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
+        public long Number { get; set; }
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public string? ImagePath { get; set; }
         public double[]? Embedding { get; set; }
-        public int? FaceId { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
 
         // Foreign Key to Admin (One-to-Many)
-        public int AdminId { get; set; }
+        public Guid AdminId { get; set; }
         public Admin Admin { get; set; }  // Navigation Property
 
         // Navigation Property to AttendeeSubject (Many-to-Many)

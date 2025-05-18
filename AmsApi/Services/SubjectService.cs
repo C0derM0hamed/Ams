@@ -1,141 +1,92 @@
-﻿using AmsApi.Data;
-using AmsApi.DTOs;
-using AmsApi.Interfaces;
-using AmsApi.Models;
-using AutoMapper;
-using Microsoft.EntityFrameworkCore;
-
-namespace AmsApi.Services;
-
-public class SubjectService : ISubjectService
+﻿namespace AmsApi.Services
 {
-    private readonly AmsDbContext _context;
-    private readonly IMapper _mapper;
-
-    public SubjectService(AmsDbContext context, IMapper mapper)
+    public class SubjectService : ISubjectService
     {
-        _context = context;
-        _mapper = mapper;
-    }
+        private readonly AmsDbContext _context;
+        public SubjectService(AmsDbContext context) => _context = context;
 
-    public async Task<IEnumerable<SubjectDto>> GetAllAsync()
-    {
-        var subjects = await _context.Subjects.ToListAsync();
-        return _mapper.Map<IEnumerable<SubjectDto>>(subjects);
-    }
+        public async Task<List<Subject>> GetAllAsync()
+            => await _context.Subjects
+                .Include(s => s.Instructor)
+                .Include(s => s.AttendeeSubjects).ThenInclude(x => x.Attendee)
+                .ToListAsync();
 
-    public async Task<SubjectDto?> GetByIdAsync(int id)
-    {
-        var subject = await _context.Subjects.FindAsync(id);
-        return subject is null ? null : _mapper.Map<SubjectDto>(subject);
-    }
+        public async Task<Subject?> GetByIdAsync(Guid id)
+            => await _context.Subjects
+                .Include(s => s.Instructor)
+                .Include(s => s.AttendeeSubjects).ThenInclude(x => x.Attendee)
+                .FirstOrDefaultAsync(s => s.Id == id);
 
-    public async Task<SubjectDto> CreateAsync(CreateSubjectDto dto)
-    {
-        var subject = _mapper.Map<Subject>(dto);
-        _context.Subjects.Add(subject);
-        await _context.SaveChangesAsync();
-
-        return _mapper.Map<SubjectDto>(subject);
-    }
-
-    public async Task<bool> UpdateAsync(int id, UpdateSubjectDto dto)
-    {
-        var subject = await _context.Subjects.FindAsync(id);
-        if (subject == null) return false;
-
-        if (!string.IsNullOrWhiteSpace(dto.Name))
-            subject.Name = dto.Name;
-
-        if (!string.IsNullOrWhiteSpace(dto.Description))
-            subject.Description = dto.Description;
-
-        await _context.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<bool> DeleteAsync(int id)
-    {
-        var subject = await _context.Subjects.FindAsync(id);
-        if (subject == null) return false;
-
-        _context.Subjects.Remove(subject);
-        await _context.SaveChangesAsync();
-        return true;
-    }
-
-    // تعديل إضافة Attendee إلى Subject باستخدام AttendeeSubject
-    public async Task<bool> AddAttendeeToSubject(int subjectId, int attendeeId)
-    {
-        var subject = await _context.Subjects.FindAsync(subjectId);
-        if (subject == null) return false;
-
-        // تحقق من إذا كان الـ AttendeeSubject موجودًا بالفعل
-        var existingAttendeeSubject = await _context.AttendeeSubjects
-            .FirstOrDefaultAsync(sd => sd.SubjectId == subjectId && sd.AttendeeId == attendeeId);
-
-        if (existingAttendeeSubject == null)
+        public async Task<Subject> CreateAsync(CreateSubjectDto dto)
         {
-            var attendeeSubject = new AttendeeSubject
+            var s = new Subject
             {
-                AttendeeId = attendeeId,
-                SubjectId = subjectId
+                Name = dto.Name,
+                Description = dto.Description,
+                InstructorId = dto.InstructorId
             };
-
-            _context.AttendeeSubjects.Add(attendeeSubject);
+            _context.Subjects.Add(s);
             await _context.SaveChangesAsync();
+            return s;
         }
 
-        return true;
-    }
-
-    // تعديل إزالة Attendee من Subject باستخدام AttendeeSubject
-    public async Task<bool> RemoveAttendeeFromSubject(int subjectId, int attendeeId)
-    {
-        var subject = await _context.Subjects.FindAsync(subjectId);
-        if (subject == null) return false;
-
-        var attendeeSubject = await _context.AttendeeSubjects
-            .FirstOrDefaultAsync(sd => sd.SubjectId == subjectId && sd.AttendeeId == attendeeId);
-
-        if (attendeeSubject != null)
+        public async Task<Subject?> UpdateAsync(Guid id, UpdateSubjectDto dto)
         {
-            _context.AttendeeSubjects.Remove(attendeeSubject);
+            var s = await _context.Subjects.FindAsync(id);
+            if (s == null) return null;
+
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                s.Name = dto.Name;
+
+            if (dto.Description != null)
+                s.Description = dto.Description;
+
+            if (dto.InstructorId.HasValue)
+                s.InstructorId = dto.InstructorId; // can be null to unassign
+
             await _context.SaveChangesAsync();
+            return s;
         }
 
-        return true;
-    }
-
-    // تعديل إضافة Instructor إلى Subject باستخدام AttendeeSubject
-    public async Task<bool> AddInstructorToSubject(int subjectId, int instructorId)
-    {
-        var subject = await _context.Subjects.FindAsync(subjectId);
-        if (subject == null) return false;
-
-        // تحقق من أن الـ InstructorId ليس موجودًا بالفعل
-        if (subject.InstructorId != instructorId)
+        public async Task<bool> DeleteAsync(Guid id)
         {
-            subject.InstructorId = instructorId;
+            var s = await _context.Subjects.FindAsync(id);
+            if (s == null) return false;
+            _context.Subjects.Remove(s);
             await _context.SaveChangesAsync();
+            return true;
         }
 
-        return true;
-    }
-
-    // تعديل إزالة Instructor من Subject
-    public async Task<bool> RemoveInstructorFromSubject(int subjectId, int instructorId)
-    {
-        var subject = await _context.Subjects.FindAsync(subjectId);
-        if (subject == null) return false;
-
-        // تحقق من أن الـ InstructorId موجود في المادة
-        if (subject.InstructorId == instructorId)
+        public async Task<List<Attendee>> GetAttendeesAsync(Guid subjectId)
         {
-            subject.InstructorId = 0; // أو ضع الـ InstructorId كـ null إذا كنت تستخدم nullables
-            await _context.SaveChangesAsync();
+            return await _context.AttendeeSubjects
+                .Where(x => x.SubjectId == subjectId)
+                .Select(x => x.Attendee)
+                .ToListAsync();
         }
 
-        return true;
+        public async Task<SubjectDate> AddSubjectDateAsync(Guid subjectId, CreateSubjectDateDto dto)
+        {
+            var sd = new SubjectDate
+            {
+                SubjectId = subjectId,
+                DayOfWeek = dto.DayOfWeek,
+                StartTime = dto.StartTime,
+                EndTime = dto.EndTime
+            };
+            _context.SubjectDates.Add(sd);
+            await _context.SaveChangesAsync();
+            return sd;
+        }
+
+        public async Task<bool> RemoveSubjectDateAsync(Guid subjectId, Guid subjectDateId)
+        {
+            var sd = await _context.SubjectDates
+                .FirstOrDefaultAsync(x => x.Id == subjectDateId && x.SubjectId == subjectId);
+            if (sd == null) return false;
+            _context.SubjectDates.Remove(sd);
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

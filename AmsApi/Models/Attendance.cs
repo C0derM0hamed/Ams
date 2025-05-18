@@ -2,10 +2,13 @@
 
 public class Attendance
 {
-    public int Id { get; set; }
-    public int SubjectId { get; set; }
-    public int AttendeeId { get; set; }
-    public DateTime Date { get; set; } = DateTime.UtcNow;
-    public bool IsPresent { get; set; } = false;
-    public DateTime? CheckInTime { get; set; } //
+    public Guid Id { get; set; }
+
+    public Guid AttendeeId { get; set; }
+    public Guid SubjectId { get; set; }
+    public Attendee Attendee { get; set; }  
+        public Subject  Subject  { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // إضافة CreatedAt
+
+
 }

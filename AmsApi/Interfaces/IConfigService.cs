@@ -2,10 +2,13 @@
 {
     public interface IConfigService
     {
-        Task<bool> TrainClassifierAsync();
-        Task<bool> ToggleFaceRecognitionAsync(bool enabled);
-        bool IsFaceRecognitionEnabled();
-        public Task<bool> UploadDatasetAsync();
+        Task SetFaceRecModeAsync(FaceRecMode mode, string jwtToken);
+        Task UploadClassifierAsync(IFormFile classifierFile, string jwtToken);
+    }
+    public enum FaceRecMode
+    {
+        Embed,
+        Classify
     }
 
 }

@@ -1,59 +1,43 @@
-﻿
-namespace AmsApi.Controllers;
+﻿// ConfigController.cs
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class ConfigController : ControllerBase
 {
-    private readonly IConfigService _configService;
+    private readonly FaceRecModeService _modeSvc;
+    private readonly IPythonClassifierClient _pyClient;
 
-    public ConfigController(IConfigService configService)
+    public ConfigController(
+        FaceRecModeService modeSvc,
+        IPythonClassifierClient pyClient)
     {
-        _configService = configService;
+        _modeSvc = modeSvc;
+        _pyClient = pyClient;
     }
 
-    // POST /api/config/classifier
-    [HttpPost("classifier")]
-    public async Task<IActionResult> TrainClassifier()
-    {
-        var result = await _configService.TrainClassifierAsync();
-        if (!result)
-            return StatusCode(500, new { message = "Failed to train classifier" });
-
-        return Ok(new { message = "Classifier trained successfully" });
-    }
-
-    // PUT /api/config/face_recognition?enabled=true
+    /// <summary>
+    /// PUT /api/config/face_recognition?mode=Embed
+    /// Switches between "Embed" and "Classify" modes in memory.
+    /// </summary>
     [HttpPut("face_recognition")]
-    public async Task<IActionResult> ToggleFaceRecognition([FromQuery] bool enabled)
+    [Authorize(Roles = "Admin")]
+    public IActionResult SetMode([FromQuery] FaceRecModeDto dto)
     {
-        var result = await _configService.ToggleFaceRecognitionAsync(enabled);
-        if (!result)
-            return StatusCode(500, new { message = "Failed to update face recognition setting" });
-
-        return Ok(new
-        {
-            message = $"Face recognition {(enabled ? "enabled" : "disabled")}"
-        });
-    }
-
-    // GET /api/config/face_recognition
-    [HttpGet("face_recognition")]
-    public IActionResult GetStatus()
-    {
-        var isEnabled = _configService.IsFaceRecognitionEnabled();
-        return Ok(new { faceRecognition = isEnabled });
-    }
-
-    [HttpPost("upload-dataset")]
-    public async Task<IActionResult> UploadDataset()
-    {
-        var success = await _configService.UploadDatasetAsync();
-        if (!success)
-            return StatusCode(500, "❌ Failed to upload dataset");
-
-        return Ok(new { message = "✅ Dataset uploaded successfully to Python service" });
+        _modeSvc.SetMode(dto.Mode);
+        return Ok(new { message = $"Face-rec mode set to {dto.Mode}" });
     }
 
 
+    [HttpPost("classifier")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UploadClassifier([FromForm] IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file uploaded" });
+
+        await _pyClient.UploadClassifierAsync(file);
+        return Ok(new { message = "Classifier updated on Python server" });
+    }
 }

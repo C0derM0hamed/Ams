@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace AmsApi.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class FaceCheckInController : ControllerBase
 {
     private readonly FaceRecognitionService _faceService;

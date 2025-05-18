@@ -1,35 +1,40 @@
-﻿using AmsApi.Interfaces;
-
-namespace AmsApi.Services;
+﻿using System.Net.Http.Headers;
+using System.Text.Json;
 
 public class ConfigService : IConfigService
 {
-    private static bool _faceRecognitionEnabled = false;
-    private readonly FaceRecognitionService _faceRecognition;
-    public ConfigService(FaceRecognitionService faceRecognition)
+    private readonly HttpClient _http;
+
+    public ConfigService(HttpClient http)
     {
-        _faceRecognition = faceRecognition;
-    }
-    public Task<bool> TrainClassifierAsync()
-    {
-        // هنا ممكن تنادي Python script أو AI model
-        Console.WriteLine("Training classifier...");
-        return Task.FromResult(true);
+        _http = http;
     }
 
-    public Task<bool> ToggleFaceRecognitionAsync(bool enabled)
+    public async Task SetFaceRecModeAsync(FaceRecMode mode, string jwtToken)
     {
-        _faceRecognitionEnabled = enabled;
-        return Task.FromResult(true);
+        var modeStr = mode.ToString(); // "Embed" or "Classify"
+        using var req = new HttpRequestMessage(HttpMethod.Put, $"/config/face_recognition?mode={modeStr}");
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jwtToken);
+        var resp = await _http.SendAsync(req);
+        resp.EnsureSuccessStatusCode();
     }
 
-    public bool IsFaceRecognitionEnabled()
+    public async Task UploadClassifierAsync(IFormFile classifierFile, string jwtToken)
     {
-        return _faceRecognitionEnabled;
-    }
+        using var content = new MultipartFormDataContent();
+        using var stream = classifierFile.OpenReadStream();
+        content.Add(new StreamContent(stream)
+        {
+            Headers = { ContentType = new MediaTypeHeaderValue("application/octet-stream") }
+        }, "classifier", classifierFile.FileName);
 
-    public Task<bool> UploadDatasetAsync()
-    {
-        throw new NotImplementedException();
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/config/classifier")
+        {
+            Content = content
+        };
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jwtToken);
+
+        var resp = await _http.SendAsync(req);
+        resp.EnsureSuccessStatusCode();
     }
 }

@@ -1,130 +1,96 @@
-﻿using AmsApi.Models;
-using QuestPDF.Fluent;
-using QuestPDF.Helpers;
-using QuestPDF.Infrastructure;
-namespace AmsApi.Services;
+﻿// AmsApi/Services/AttendanceService.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using AmsApi.Data;
+using AmsApi.Interfaces;
+using AmsApi.Models;
+using Microsoft.EntityFrameworkCore;
 
-public class AttendanceService : IAttendanceService
+namespace AmsApi.Services
 {
-    private readonly AmsDbContext _context;
-    private readonly IMapper _mapper;
-
-    public AttendanceService(AmsDbContext context, IMapper mapper)
+    public class AttendanceService : IAttendanceService
     {
-        _context = context;
-        _mapper = mapper;
-    }
+        private readonly AmsDbContext _context;
 
-    public async Task<List<AttendanceDto>> GetAttendanceBySubjectId(int subjectId)
-    {
-        var records = await _context.Attendances
-            .Where(a => a.SubjectId == subjectId)
-            .ToListAsync();
-
-        return _mapper.Map<List<AttendanceDto>>(records);
-    }
-
-    public async Task<bool> MarkAttendance(int subjectId, int attendeeId, MarkAttendanceDto dto)
-    {
-        var today = DateTime.UtcNow.Date;
-
-        var existing = await _context.Attendances
-            .FirstOrDefaultAsync(a =>
-                a.SubjectId == subjectId &&
-                a.AttendeeId == attendeeId &&
-                a.Date.Date == today);
-
-        if (existing != null)
+        public AttendanceService(AmsDbContext context)
         {
-            existing.IsPresent = dto.IsPresent;
+            _context = context;
         }
-        else
+
+        public async Task<List<Attendance>> GetBySubjectAsync(Guid subjectId)
         {
-            var newAttendance = new Attendance
+            return await _context.Attendances
+                .Where(a => a.SubjectId == subjectId)
+                .Include(a => a.Attendee)
+                .Include(a => a.Subject)
+                    .ThenInclude(s => s.Instructor)
+                .Include(a => a.Subject)
+                    .ThenInclude(s => s.SubjectDates)
+                .ToListAsync();
+        }
+
+        public async Task<Attendance> CreateOneAsync(Guid subjectId, Guid attendeeId)
+        {
+            // prevent duplicate in same day
+            var last = await _context.Attendances
+                .OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (last != null
+                && last.AttendeeId == attendeeId
+                && last.CreatedAt.Date == DateTime.UtcNow.Date)
             {
-                SubjectId = subjectId,
+                throw new InvalidOperationException("Duplicate attendance for today");
+            }
+
+            var att = new Attendance
+            {
                 AttendeeId = attendeeId,
-                Date = today,
-                IsPresent = dto.IsPresent
+                SubjectId = subjectId,
+                CreatedAt = DateTime.UtcNow
             };
+            _context.Attendances.Add(att);
+            await _context.SaveChangesAsync();
 
-            _context.Attendances.Add(newAttendance);
+            return await GetByIdAsync(att.Id);
         }
 
-        await _context.SaveChangesAsync();
-        return true;
-    }
-    public async Task<AttendanceReportDto?> GetAttendanceReportAsync(int subjectId, DateTime date)
-    {
-        var subject = await _context.Subjects.FindAsync(subjectId);
-        if (subject == null)
-            return null;
-
-        // جلب الـ Attendees المرتبطين بالـ Subject عبر AttendeeSubjects
-        var subjectAttendees = await _context.Attendees
-        .Where(a => a.AttendeeSubjects.Any(ad => ad.SubjectId == subjectId)) // استخدام AttendeeSubjects بدلاً من SubjectIds
-            .ToListAsync();
-
-        // جلب الحضور بناءً على الـ SubjectId و التاريخ
-        var presentIds = await _context.Attendances
-            .Where(a => a.SubjectId == subjectId && a.Date.Date == date.Date)
-            .Select(a => a.AttendeeId)
-            .ToListAsync();
-
-        // تحديد الحضور
-        var present = subjectAttendees
-            .Where(a => presentIds.Contains(a.Id))
-            .Select(a => a.FullName)
-            .ToList();
-
-        // تحديد الغياب
-        var absent = subjectAttendees
-            .Where(a => !presentIds.Contains(a.Id))
-            .Select(a => a.FullName)
-            .ToList();
-
-        return new AttendanceReportDto
+        public async Task<List<Attendance>> CreateManyAsync(Guid subjectId, List<Guid> attendeeIds)
         {
-            Subject = subject.Name,
-            Date = date,
-            Present = present,
-            Absent = absent
-        };
-    }
-
-
-    public byte[] GenerateAttendancePdf(string subjectName, DateTime date, List<string> present, List<string> absent)
-    {
-        using var ms = new MemoryStream();
-
-        Document.Create(container =>
-        {
-            container.Page(page =>
+            using var tx = await _context.Database.BeginTransactionAsync();
+            var created = new List<Attendance>();
+            foreach (var attendeeId in attendeeIds)
             {
-                page.Margin(30);
-                page.Content().Column(col =>
-                {
-                    col.Item().Text($"تقرير الحضور").FontSize(18).Bold().AlignCenter();
-                    col.Item().Text($"المادة: {subjectName}").FontSize(14).AlignRight();
-                    col.Item().Text($"التاريخ: {date:yyyy-MM-dd}").FontSize(14).AlignRight();
+                var a = await CreateOneAsync(subjectId, attendeeId);
+                created.Add(a);
+            }
+            await tx.CommitAsync();
+            return created;
+        }
 
-                    col.Item().PaddingVertical(10);
+        public async Task<bool> DeleteAsync(Guid attendanceId)
+        {
+            var att = await _context.Attendances.FindAsync(attendanceId);
+            if (att == null) return false;
+            _context.Attendances.Remove(att);
+            await _context.SaveChangesAsync();
+            return true;
+        }
 
-                    col.Item().Text("✅ الحاضرين").FontSize(16).Bold();
-                    col.Item().Text(string.Join("\n", present)).FontSize(14);
+        public async Task<Attendance> GetByIdAsync(Guid attendanceId)
+        {
+            var att = await _context.Attendances
+                .Include(a => a.Attendee)
+                .Include(a => a.Subject)
+                    .ThenInclude(s => s.Instructor)
+                .Include(a => a.Subject)
+                    .ThenInclude(s => s.SubjectDates)
+                .FirstOrDefaultAsync(a => a.Id == attendanceId);
 
-                    col.Item().PaddingVertical(10);
-
-                    col.Item().Text("❌ الغائبين").FontSize(16).Bold();
-                    col.Item().Text(string.Join("\n", absent)).FontSize(14);
-                });
-            });
-        })
-        .GeneratePdf(ms);
-
-        return ms.ToArray();
+            if (att == null) throw new KeyNotFoundException("Attendance not found");
+            return att;
+        }
     }
-
-
-
 }

@@ -4,8 +4,7 @@
     {
         public MappingProfiles()
         {
-            CreateMap<Attendee, AttendeeDto>()
-                .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom<AttendeeImageUrlResolver>());
+           
             
             CreateMap<Instructor, InstructorDto>()
                 .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom<InstructorImageUrlResolver>()); // نضيف ده كمان

@@ -1,113 +1,137 @@
-﻿using AmsApi.Config;
-using AmsApi.Data;
+﻿using AmsApi.Models;
 using AmsApi.DTOs;
-using AmsApi.Errors;
-using AmsApi.Interfaces;
-using AmsApi.Models;
-using AmsApi.Responses;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
+using AmsApi.Config;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 
 namespace AmsApi.Services;
 
 public class InstructorService : IInstructorService
 {
     private readonly AmsDbContext _context;
-    private readonly JwtSettings _jwt;
+    private readonly string _assetsRoot;
 
-    public InstructorService(AmsDbContext context, IOptions<JwtSettings> jwt)
+    public InstructorService(AmsDbContext context, IWebHostEnvironment env)
     {
         _context = context;
-        _jwt = jwt.Value;
+        // We'll save images under wwwroot/instructors/{id}/image.png
+        _assetsRoot = Path.Combine(env.WebRootPath, "instructors");
     }
 
-    public async Task<Instructor> RegisterAsync(RegisterInstructorDto dto)
-    {
-        var exists = await _context.Instructors.AnyAsync(x => x.Email == dto.Email);
-        if (exists)
-            throw new ApiException(400, "Email already registered");
+    public async Task<List<Instructor>> GetAllAsync()
+        => await _context.Instructors.ToListAsync();
 
-        var newInstructor = new Instructor
+    public async Task<Instructor?> GetByIdAsync(Guid id)
+        => await _context.Instructors.FindAsync(id);
+
+    public async Task<Instructor?> GetByEmailAsync(string email)
+        => await _context.Instructors.FirstOrDefaultAsync(x => x.Email == email);
+
+    public async Task<Instructor> CreateAsync(CreateInstructorDto dto)
+    {
+        var instructor = new Instructor
         {
             FullName = dto.FullName,
             Email = dto.Email,
-            Password = dto.Password
+            Password = dto.Password,
+            Number = dto.Number,
+            
         };
 
-        _context.Instructors.Add(newInstructor);
-        await _context.SaveChangesAsync();
-
-        return newInstructor;
-    }
-
-    public async Task<AuthResponse> LoginAsync(LoginInstructorDto dto)
-    {
-        var instructor = await _context.Instructors
-            .SingleOrDefaultAsync(x => x.Email == dto.Email && x.Password == dto.Password);
-
-        if (instructor == null)
-            throw new ApiException(401, "Invalid credentials");
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.UTF8.GetBytes(_jwt.SecretKey);
-
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(new[]
-            {
-                new Claim("instructor_id", instructor.Id.ToString()),
-                new Claim(ClaimTypes.Name, instructor.FullName),
-                new Claim(ClaimTypes.Email, instructor.Email),
-            }),
-            Expires = DateTime.UtcNow.AddMinutes(_jwt.ExpiryInMinutes),
-            Issuer = _jwt.Issuer,
-            Audience = _jwt.Audience,
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-        };
-
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-
-        return new AuthResponse
-        {
-            Token = tokenHandler.WriteToken(token),
-            ExpiresAt = tokenDescriptor.Expires ?? DateTime.UtcNow
-        };
-    }
-
-    public async Task<Instructor?> UpdateAsync(int id, UpdateInstructorDto dto)
-    {
-        var instructor = await _context.Instructors.FindAsync(id);
-        if (instructor == null) return null;
-
-        if (!string.IsNullOrWhiteSpace(dto.FullName))
-            instructor.FullName = dto.FullName;
-
-        if (!string.IsNullOrWhiteSpace(dto.Email))
-            instructor.Email = dto.Email;
-
-        if (!string.IsNullOrWhiteSpace(dto.Password))
-            instructor.Password = dto.Password;
-
+        _context.Instructors.Add(instructor);
         await _context.SaveChangesAsync();
         return instructor;
     }
 
-    public async Task<Instructor?> GetByIdAsync(int id)
+    public async Task<Instructor?> UpdateAsync(Guid id, UpdateInstructorDto dto)
     {
-        return await _context.Instructors.FindAsync(id);
+        var inst = await _context.Instructors.FindAsync(id);
+        if (inst == null) return null;
+
+        if (!string.IsNullOrWhiteSpace(dto.FullName))
+            inst.FullName = dto.FullName;
+
+        if (!string.IsNullOrWhiteSpace(dto.Email))
+            inst.Email = dto.Email;
+
+        if (!string.IsNullOrWhiteSpace(dto.Password))
+            inst.Password = dto.Password;
+
+        if (dto.Number.HasValue)
+            inst.Number = dto.Number.Value;
+
+        if (dto.ImageBytes != null)
+        {
+            var path = await SaveImageAsync(id, dto.ImageBytes);
+            inst.ImagePath = path;
+        }
+
+        await _context.SaveChangesAsync();
+        return inst;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
-        var instructor = await _context.Instructors.FindAsync(id);
-        if (instructor == null) return false;
-
-        _context.Instructors.Remove(instructor);
+        var inst = await _context.Instructors.FindAsync(id);
+        if (inst == null) return false;
+        _context.Instructors.Remove(inst);
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<List<Subject>> GetSubjectsForInstructorAsync(Guid instructorId)
+    {
+        return await _context.Subjects
+            .Where(s => s.InstructorId == instructorId)
+            .ToListAsync();
+    }
+
+    public async Task<Subject?> GetSubjectForInstructorAsync(Guid instructorId, Guid subjectId)
+    {
+        return await _context.Subjects
+            .FirstOrDefaultAsync(s => s.Id == subjectId && s.InstructorId == instructorId);
+    }
+
+    public async Task<bool> AssignSubjectToInstructorAsync(Guid instructorId, Guid subjectId)
+    {
+        var subject = await _context.Subjects.FindAsync(subjectId);
+        if (subject == null) return false;
+        subject.InstructorId = instructorId;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> RemoveSubjectFromInstructorAsync(Guid instructorId, Guid subjectId)
+    {
+        var subject = await _context.Subjects
+            .FirstOrDefaultAsync(s => s.Id == subjectId && s.InstructorId == instructorId);
+        if (subject == null) return false;
+        subject.InstructorId = null;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<string> UploadImageAsync(Guid instructorId, byte[] imageBytes)
+    {
+        var dir = Path.Combine(_assetsRoot, instructorId.ToString());
+        Directory.CreateDirectory(dir);
+        var filePath = Path.Combine(dir, "image.png");
+        await File.WriteAllBytesAsync(filePath, imageBytes);
+
+        // Update DB record
+        var inst = await _context.Instructors.FindAsync(instructorId);
+        if (inst == null) throw new InvalidOperationException("Instructor not found");
+        inst.ImagePath = filePath;
+        await _context.SaveChangesAsync();
+        return filePath;
+    }
+
+    private Task<string> SaveImageAsync(Guid instructorId, byte[] bytes)
+        => UploadImageAsync(instructorId, bytes);
 }
+

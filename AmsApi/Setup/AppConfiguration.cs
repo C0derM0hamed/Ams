@@ -7,6 +7,9 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutoMapper;
+using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AmsApi.Setup;
 
@@ -14,10 +17,10 @@ public static class AppConfiguration
 {
     public static void AddCustomServices(this IServiceCollection services, IConfiguration config)
     {
-        // إعداد JWT
         var jwtSettings = config.GetSection("JwtSettings").Get<JwtSettings>();
         services.Configure<JwtSettings>(config.GetSection("JwtSettings"));
-
+       
+        services.AddSingleton(jwtSettings.SecretKey);
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -31,31 +34,48 @@ public static class AppConfiguration
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtSettings!.Issuer,
+                ValidIssuer = jwtSettings.Issuer,
                 ValidAudience = jwtSettings.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
             };
         });
 
+
         // خدمات المشروع
-        services.AddTransient<AttendeeImageUrlResolver>();
-        services.AddScoped<IAuthService, AuthService>();
+
+        //  • register the mode holder
+        services.AddSingleton<FaceRecModeService>();
+
+        //  • register our Python‐client against the configured base URL
+        var pyBase = config["PythonFaceRec:BaseUrl"]!;
+        services.AddHttpClient<IPythonClassifierClient, PythonClassifierClient>(client =>
+        {
+            client.BaseAddress = new Uri(pyBase);
+        });
+
         services.AddScoped<IAttendeeService, AttendeeService>();
         services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IInstructorService, InstructorService>();
-
+        services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
-        services.AddScoped<ISubjectDateService, SubjectDateService>();
+        
         services.AddScoped<IConfigService, ConfigService>();
 
         services.AddScoped<FaceDatasetUploaderService>();
-        services.AddHttpClient<FaceRecognitionService>();
         services.AddHttpClient();
         services.AddHttpClient<FaceRecognitionService>();
 
+        services.AddSingleton<JwtHelper>();
+        services.AddIdentity<AppUser, IdentityRole>()
+         .AddEntityFrameworkStores<AmsDbContext>()
+         .AddDefaultTokenProviders();
+
         // AutoMapper
-        services.AddAutoMapper(typeof(Program));
+        services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
         services.AddHttpContextAccessor();
+
+        services.AddScoped<IFaceRecognizer, Services.FaceRecognizer> ();
+
     }
 
     public static void UseCustomMiddleware(this WebApplication app)

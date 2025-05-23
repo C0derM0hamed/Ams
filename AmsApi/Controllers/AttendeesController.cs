@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Razor.TagHelpers;
+﻿using AmsApi.Models;
+using Microsoft.AspNetCore.Razor.TagHelpers;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -39,10 +40,10 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> LoginWithToken([FromHeader] string jwtToken)
         {
             var claims = JwtHelper.ValidateToken(jwtToken);
-            var UserRole = claims.FindFirst("role")?.Value;
+            var adminId = claims?.FindFirst("adminId")?.Value;
             var UserId = claims?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
-            if (claims == null || UserRole != "Attendee")
+            if (claims == null || adminId != "Attendee")
                 return Unauthorized(new { message = "Unauthorized access" });
 
             var attendee = await _attendeeService.GetByIdAsync(Guid.Parse(UserId));
@@ -56,12 +57,29 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> GetAll([FromHeader] string jwtToken)
         {
             var claims = JwtHelper.ValidateToken(jwtToken);
-            var UserRole = claims.FindFirst("role")?.Value;
-            if (claims == null || UserRole != "Admin")
+            var adminId = claims?.FindFirst("adminId")?.Value;
+            if (claims == null || adminId ==null)
                 return Unauthorized(new { message = "Unauthorized access" });
 
             var attendees = await _attendeeService.GetAllAsync();
             return Ok(attendees);
+        }
+        // Get attendee by ID
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetOne(Guid id, [FromHeader] string jwtToken)
+        {
+            var claims = JwtHelper.ValidateToken(jwtToken);
+            
+            var adminId = claims?.FindFirst("adminId")?.Value;
+            var UserId = claims?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            if (claims == null || (adminId ==null && UserId != id.ToString()))
+                return Unauthorized(new { message = "Unauthorized access" });
+
+            var attendee = await _attendeeService.GetByIdAsync(id);
+            if (attendee == null)
+                return NotFound();
+
+            return Ok(attendee);
         }
 
         // Create attendee
@@ -83,10 +101,10 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> GetAllWithImage([FromForm] IFormFile file, [FromHeader] string jwtToken)
         {
             var claims = JwtHelper.ValidateToken(jwtToken);
-            var userRole = claims?.FindFirst("role")?.Value;
+            var adminId = claims?.FindFirst("adminId")?.Value;
 
             // If the user is an Attendee, deny access
-            if (userRole == "Attendee")
+            if (adminId == null)
             {
                 return Unauthorized(new { message = "Unauthorized access" });
             }
@@ -182,30 +200,16 @@ namespace AmsApi.Controllers
         }
 
 
-        // Get attendee by ID
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetOne(Guid id, [FromHeader] string jwtToken)
-        {
-            var claims = JwtHelper.ValidateToken(jwtToken);
-            var UserRole = claims.FindFirst("role")?.Value;
-            var UserId = claims?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            if (claims == null || (UserRole != "Admin" && UserId != id.ToString()))
-                return Unauthorized(new { message = "Unauthorized access" });
-
-            var attendee = await _attendeeService.GetByIdAsync(id);
-            if (attendee == null)
-                return NotFound();
-
-            return Ok(attendee);
-        }
+        
 
         // Update attendee details
         [HttpPatch("{attendee_id}")]
         public async Task<IActionResult> Update(Guid attendee_id, [FromBody] UpdateAttendeeDto dto, [FromHeader] string jwtToken)
         {
             var claims = JwtHelper.ValidateToken(jwtToken);
-            var UserRole = claims.FindFirst("role")?.Value;
-            if (claims == null || UserRole != "Admin")
+            
+            var adminId = claims?.FindFirst("adminId")?.Value;
+            if (claims == null || adminId == null)
                 return Unauthorized(new { message = "Unauthorized access" });
 
             var updatedAttendee = await _attendeeService.UpdateAsync(attendee_id, dto);
@@ -220,8 +224,8 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> Delete(Guid attendee_id, [FromHeader] string jwtToken)
         {
             var claims = JwtHelper.ValidateToken(jwtToken);
-            var UserRole = claims.FindFirst("role")?.Value;
-            if (claims == null || UserRole != "Admin")
+            var adminId = claims?.FindFirst("adminId")?.Value;
+            if (claims == null || adminId == null)
                 return Unauthorized(new { message = "Unauthorized access" });
 
             var success = await _attendeeService.DeleteAsync(attendee_id);

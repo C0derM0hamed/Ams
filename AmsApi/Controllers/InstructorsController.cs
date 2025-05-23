@@ -32,9 +32,10 @@ public class InstructorsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateInstructorDto dto, [FromHeader] string jwtToken)
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        if (principal == null || role != "Admin")
+        var claims = JwtHelper.ValidateToken(jwtToken);
+        
+        var adminId = claims?.FindFirst("adminId")?.Value;
+        if (claims == null || adminId==null)
             return Unauthorized();
 
         var inst = await _service.CreateAsync(dto);

@@ -1,4 +1,6 @@
-﻿namespace AmsApi.Controllers
+﻿using System.Security.Claims;
+
+namespace AmsApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
@@ -25,9 +27,9 @@
             [FromBody] CreateSubjectDto dto,
             [FromHeader] string jwtToken)
         {
-            var principal = JwtHelper.ValidateToken(jwtToken);
-            var role = principal?.FindFirst("role")?.Value;
-            if (principal == null || role != "Admin")
+            var claims = JwtHelper.ValidateToken(jwtToken);
+            var adminId = claims?.FindFirst("adminId")?.Value;
+            if (claims == null || adminId == null)
                 return Unauthorized();
             var subj = await _svc.CreateAsync(dto);
             return CreatedAtAction(nameof(GetOne), new { subjectId = subj.Id }, subj);

@@ -1,6 +1,7 @@
 ﻿using AmsApi.Models;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 using System.IdentityModel.Tokens.Jwt;
+using System.IO.Compression;
 using System.Security.Claims;
 
 namespace AmsApi.Controllers
@@ -313,6 +314,60 @@ namespace AmsApi.Controllers
 
             // الرد بنجاح
             return Ok(new { message = "Subject was removed from attendee successfully" });
+        }
+        // رفع صور لتدريب النموذج
+        [HttpPost(template: "{attendee_id}/upload_images_for_training")]
+        public async Task<IActionResult> UploadImagesForTraining(Guid attendee_id, [FromForm] List<IFormFile> files, [FromHeader] string jwtToken)
+        {
+            var claims = JwtHelper.ValidateToken(jwtToken);
+            var adminId = claims?.FindFirst("adminId")?.Value;
+
+            if (claims == null || adminId ==null)
+                return Unauthorized(new { message = "Unauthorized access" });
+
+            var attendee = await _attendeeService.GetByIdAsync(attendee_id);
+            if (attendee == null)
+                return NotFound("Attendee not found.");
+
+            if (files == null || !files.Any())
+                return BadRequest("No images uploaded.");
+
+            var studentNumber = attendee.Number.ToString();
+            var tempPath = Path.GetTempPath();
+            var zipPath = Path.Combine(tempPath, $"{studentNumber}_training.zip");
+
+            using (var archive = System.IO.Compression.ZipFile.Open(zipPath, System.IO.Compression.ZipArchiveMode.Create))
+            {
+                foreach (var file in files)
+                {
+                    var filePath = Path.Combine(tempPath, file.FileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    archive.CreateEntryFromFile(filePath, file.FileName);
+                    System.IO.File.Delete(filePath); // حذف الملف بعد إضافته للـZIP
+                }
+
+                // إضافة رقم الطالب كملف نصي
+                var numberPath = Path.Combine(tempPath, "student_number.txt");
+                await System.IO.File.WriteAllTextAsync(numberPath, studentNumber);
+                archive.CreateEntryFromFile(numberPath, "student_number.txt");
+                System.IO.File.Delete(numberPath);
+            }
+
+            // إرسال الملف لسيرفر البايثون
+            using var client = new HttpClient();
+            using var content = new MultipartFormDataContent();
+            content.Add(new ByteArrayContent(await System.IO.File.ReadAllBytesAsync(zipPath)), "file", $"{studentNumber}_training.zip");
+
+            var response = await client.PostAsync("https://4c6e-156-209-187-195.ngrok-free.app/upload_training_images", content);
+            var result = await response.Content.ReadAsStringAsync();
+
+            System.IO.File.Delete(zipPath); // حذف الملف المضغوط المؤقت
+
+            return Ok(result);
         }
     }
 }

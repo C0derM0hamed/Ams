@@ -5,7 +5,7 @@ namespace AmsApi.Services
     public class FaceRecognitionService
     {
         private readonly HttpClient _httpClient;
-        private const string FaceApiBaseUrl = "http://localhost:5001"; // أو من config
+        private const string FaceApiBaseUrl = "https://4c6e-156-209-187-195.ngrok-free.app"; // أو من config
 
         public FaceRecognitionService(HttpClient httpClient)
         {

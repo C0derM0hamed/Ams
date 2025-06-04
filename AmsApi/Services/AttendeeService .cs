@@ -2,13 +2,11 @@
 {
     private readonly AmsDbContext _context;
     private readonly string _assetsPath;
-    private readonly string _secretKey;
 
-    public AttendeeService(AmsDbContext context, string assetsPath, string secretKey)
+    public AttendeeService(AmsDbContext context,IConfiguration config)
     {
         _context = context;
-        _assetsPath = assetsPath;
-        _secretKey = secretKey;
+        _assetsPath = config["AssetsPath"] ?? "wwwroot/assets"; // fallback default
     }
 
     public async Task<Attendee> CreateAsync(CreateAttendeeDto dto, Guid adminId)
@@ -19,7 +17,7 @@
             Email = dto.Email,
             Password = dto.Password,
             Number = dto.Number,
-            AdminId = adminId
+            
 
         };
 

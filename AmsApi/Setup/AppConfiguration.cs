@@ -7,9 +7,8 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutoMapper;
-using DocumentFormat.OpenXml.Spreadsheet;
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace AmsApi.Setup;
 
@@ -19,12 +18,12 @@ public static class AppConfiguration
     {
         var jwtSettings = config.GetSection("JwtSettings").Get<JwtSettings>();
         services.Configure<JwtSettings>(config.GetSection("JwtSettings"));
-       
-        services.AddSingleton(jwtSettings.SecretKey);
+
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
         })
         .AddJwtBearer(options =>
         {
@@ -36,17 +35,26 @@ public static class AppConfiguration
                 ValidateIssuerSigningKey = true,
                 ValidIssuer = jwtSettings.Issuer,
                 ValidAudience = jwtSettings.Audience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
+                ClockSkew = TimeSpan.Zero
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnChallenge = context =>
+                {
+                    context.HandleResponse();
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    var result = JsonSerializer.Serialize(new { message = "Unauthorized" });
+                    return context.Response.WriteAsync(result);
+                }
             };
         });
 
-
-        // خدمات المشروع
-
-        //  • register the mode holder
+        // ✅ الخدمات
         services.AddSingleton<FaceRecModeService>();
 
-        //  • register our Python‐client against the configured base URL
         var pyBase = config["PythonFaceRec:BaseUrl"]!;
         services.AddHttpClient<IPythonClassifierClient, PythonClassifierClient>(client =>
         {
@@ -56,42 +64,33 @@ public static class AppConfiguration
         services.AddScoped<IAttendeeService, AttendeeService>();
         services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IInstructorService, InstructorService>();
-        services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
-        
         services.AddScoped<IConfigService, ConfigService>();
-
+        services.AddScoped<IUserService, UserService>();
         services.AddScoped<FaceDatasetUploaderService>();
         services.AddHttpClient();
         services.AddHttpClient<FaceRecognitionService>();
+        services.AddScoped<IJwtHelper, JwtHelper>();
 
-        services.AddSingleton<JwtHelper>();
-        services.AddIdentity<AppUser, IdentityRole>()
-         .AddEntityFrameworkStores<AmsDbContext>()
-         .AddDefaultTokenProviders();
-
-        // AutoMapper
         services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
         services.AddHttpContextAccessor();
-
-        services.AddScoped<IFaceRecognizer, Services.FaceRecognizer> ();
-
+        services.AddScoped<IFaceRecognizer, Services.FaceRecognizer>();
+       
+        services.AddIdentityCore<AppUser>(options => { })
+        .AddRoles<IdentityRole>()
+        .AddEntityFrameworkStores<AmsDbContext>()
+        .AddSignInManager()
+        .AddDefaultTokenProviders();
     }
 
     public static void UseCustomMiddleware(this WebApplication app)
     {
-
-
-        // ملفات الصور المخزنة في wwwroot/dataset
         app.UseStaticFiles(new StaticFileOptions
         {
-            FileProvider = new PhysicalFileProvider(
-           Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")),
+            FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")),
             RequestPath = ""
-
         });
+
         app.UseMiddleware<ExceptionMiddleware>();
-        app.UseAuthentication();
-        app.UseAuthorization();
     }
 }

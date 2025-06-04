@@ -1,83 +1,72 @@
 ﻿using AmsApi.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+
 namespace AmsApi.Controllers;
 
 [ApiController]
 [Route("[controller]")]
+[Authorize]
 public class InstructorsController : ControllerBase
 {
     private readonly IInstructorService _service;
+    private readonly IJwtHelper _jwtHelper;
 
-    public InstructorsController(IInstructorService service)
+    public InstructorsController(IInstructorService service, IJwtHelper jwtHelper)
     {
         _service = service;
+        _jwtHelper = jwtHelper;
     }
 
-    // GET /api/instructors
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromHeader] string jwtToken)
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAll()
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        if (principal == null || role != "Admin")
-            return Unauthorized();
-
         var list = await _service.GetAllAsync();
         return Ok(list);
     }
 
-    // POST /api/instructors
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateInstructorDto dto, [FromHeader] string jwtToken)
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromBody] CreateInstructorDto dto)
     {
-        var claims = JwtHelper.ValidateToken(jwtToken);
-        
-        var adminId = claims?.FindFirst("adminId")?.Value;
-        if (claims == null || adminId==null)
-            return Unauthorized();
-
         var inst = await _service.CreateAsync(dto);
         return CreatedAtAction(nameof(GetOne), new { instructorId = inst.Id }, inst);
     }
 
-    // POST /api/instructors/login
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginDto payload)
     {
         var inst = await _service.GetByEmailAsync(payload.Username);
         if (inst == null || inst.Password != payload.Password)
             return Unauthorized();
 
-        var token = JwtHelper.GenerateToken(inst.Id, "Instructor");
+        var token = _jwtHelper.GenerateToken(inst.Id, "Instructor");
         return Ok(new { token });
     }
 
-    // GET /api/instructors/login
     [HttpGet("login")]
-    public async Task<IActionResult> LoginWithToken([FromHeader] string jwtToken)
+    public async Task<IActionResult> LoginWithToken()
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (principal == null || role != "Instructor")
+        var role = User.FindFirst("role")?.Value;
+        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (role != "Instructor" || userId == null)
             return Unauthorized();
 
-        var inst = await _service.GetByIdAsync(Guid.Parse(userId!));
+        var inst = await _service.GetByIdAsync(Guid.Parse(userId));
         if (inst == null) return NotFound();
         return Ok(inst);
     }
 
-    // GET /api/instructors/{instructorId}
     [HttpGet("{instructorId:guid}")]
-    public async Task<IActionResult> GetOne(Guid instructorId, [FromHeader] string jwtToken)
+    public async Task<IActionResult> GetOne(Guid instructorId)
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (principal == null ||
-            (role != "Admin" && userId != instructorId.ToString()))
+        var role = User.FindFirst("role")?.Value;
+        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (role != "Admin" && userId != instructorId.ToString())
             return Unauthorized();
 
         var inst = await _service.GetByIdAsync(instructorId);
@@ -85,43 +74,28 @@ public class InstructorsController : ControllerBase
         return Ok(inst);
     }
 
-    // PATCH /api/instructors/{instructorId}
     [HttpPatch("{instructorId:guid}")]
-    public async Task<IActionResult> Update(Guid instructorId, [FromBody] UpdateInstructorDto dto, [FromHeader] string jwtToken)
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(Guid instructorId, [FromBody] UpdateInstructorDto dto)
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        if (principal == null || role != "Admin")
-            return Unauthorized();
-
         var updated = await _service.UpdateAsync(instructorId, dto);
         if (updated == null) return NotFound();
         return Ok(updated);
     }
 
-    // DELETE /api/instructors/{instructorId}
     [HttpDelete("{instructorId:guid}")]
-    public async Task<IActionResult> Delete(Guid instructorId, [FromHeader] string jwtToken)
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(Guid instructorId)
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        if (principal == null || role != "Admin")
-            return Unauthorized();
-
         var ok = await _service.DeleteAsync(instructorId);
         if (!ok) return NotFound();
         return NoContent();
     }
 
-    // POST /api/instructors/{instructorId}/image
     [HttpPost("{instructorId:guid}/image")]
-    public async Task<IActionResult> UploadImage(Guid instructorId, IFormFile file, [FromHeader] string jwtToken)
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UploadImage(Guid instructorId, IFormFile file)
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        if (principal == null || role != "Admin")
-            return Unauthorized();
-
         if (file == null || file.Length == 0)
             return BadRequest("No file");
 
@@ -131,30 +105,24 @@ public class InstructorsController : ControllerBase
         return Ok(new { imagePath = path });
     }
 
-    // GET /api/instructors/{instructorId}/subjects
     [HttpGet("{instructorId:guid}/subjects")]
-    public async Task<IActionResult> GetSubjects(Guid instructorId, [FromHeader] string jwtToken)
+    public async Task<IActionResult> GetSubjects(Guid instructorId)
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (principal == null ||
-            (role != "Admin" && userId != instructorId.ToString()))
+        var role = User.FindFirst("role")?.Value;
+        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (role != "Admin" && userId != instructorId.ToString())
             return Unauthorized();
 
         var list = await _service.GetSubjectsForInstructorAsync(instructorId);
         return Ok(list);
     }
 
-    // GET /api/instructors/{instructorId}/subjects/{subjectId}
     [HttpGet("{instructorId:guid}/subjects/{subjectId:guid}")]
-    public async Task<IActionResult> GetSubject(Guid instructorId, Guid subjectId, [FromHeader] string jwtToken)
+    public async Task<IActionResult> GetSubject(Guid instructorId, Guid subjectId)
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        if (principal == null ||
-            (role != "Admin" && userId != instructorId.ToString()))
+        var role = User.FindFirst("role")?.Value;
+        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (role != "Admin" && userId != instructorId.ToString())
             return Unauthorized();
 
         var subj = await _service.GetSubjectForInstructorAsync(instructorId, subjectId);
@@ -162,32 +130,21 @@ public class InstructorsController : ControllerBase
         return Ok(subj);
     }
 
-    // PUT /api/instructors/{instructorId}/subjects/{subjectId}
     [HttpPut("{instructorId:guid}/subjects/{subjectId:guid}")]
-    public async Task<IActionResult> AssignSubject(Guid instructorId, Guid subjectId, [FromHeader] string jwtToken)
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AssignSubject(Guid instructorId, Guid subjectId)
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        if (principal == null || role != "Admin")
-            return Unauthorized();
-
         var ok = await _service.AssignSubjectToInstructorAsync(instructorId, subjectId);
         if (!ok) return NotFound();
         return Ok();
     }
 
-    // DELETE /api/instructors/{instructorId}/subjects/{subjectId}
     [HttpDelete("{instructorId:guid}/subjects/{subjectId:guid}")]
-    public async Task<IActionResult> UnassignSubject(Guid instructorId, Guid subjectId, [FromHeader] string jwtToken)
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UnassignSubject(Guid instructorId, Guid subjectId)
     {
-        var principal = JwtHelper.ValidateToken(jwtToken);
-        var role = principal.FindFirst("role")?.Value;
-        if (principal == null || role != "Admin")
-            return Unauthorized();
-
         var ok = await _service.RemoveSubjectFromInstructorAsync(instructorId, subjectId);
         if (!ok) return NotFound();
         return NoContent();
     }
 }
-

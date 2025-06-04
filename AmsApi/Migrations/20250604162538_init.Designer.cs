@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AmsApi.Migrations
 {
     [DbContext(typeof(AmsDbContext))]
-    [Migration("20250518201531_int")]
-    partial class @int
+    [Migration("20250604162538_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,55 +24,6 @@ namespace AmsApi.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("AmsApi.Models.Admin", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreateAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Password")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Admins");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0000-000000000001"),
-                            CreateAt = new DateTime(2025, 5, 12, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "Mohamed@gomai.com",
-                            Name = "Mohamed Mostafa",
-                            Password = "123456",
-                            UpdatedAt = new DateTime(2025, 5, 12, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
-                            CreateAt = new DateTime(2025, 5, 12, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "Osman@gmail.com",
-                            Name = "Mohamed Osman",
-                            Password = "12345",
-                            UpdatedAt = new DateTime(2025, 5, 12, 0, 0, 0, 0, DateTimeKind.Utc)
-                        });
-                });
 
             modelBuilder.Entity("AmsApi.Models.AppUser", b =>
                 {
@@ -173,9 +124,6 @@ namespace AmsApi.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("AdminId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -204,8 +152,6 @@ namespace AmsApi.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AdminId");
 
                     b.ToTable("Attendees");
                 });
@@ -262,9 +208,6 @@ namespace AmsApi.Migrations
 
                     b.Property<DateTimeOffset>("CreateAt")
                         .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid?>("InstructorId")
                         .HasColumnType("uniqueidentifier");
@@ -466,17 +409,6 @@ namespace AmsApi.Migrations
                     b.Navigation("Subject");
                 });
 
-            modelBuilder.Entity("AmsApi.Models.Attendee", b =>
-                {
-                    b.HasOne("AmsApi.Models.Admin", "Admin")
-                        .WithMany("Attendees")
-                        .HasForeignKey("AdminId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Admin");
-                });
-
             modelBuilder.Entity("AmsApi.Models.AttendeeSubject", b =>
                 {
                     b.HasOne("AmsApi.Models.Attendee", "Attendee")
@@ -565,11 +497,6 @@ namespace AmsApi.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("AmsApi.Models.Admin", b =>
-                {
-                    b.Navigation("Attendees");
                 });
 
             modelBuilder.Entity("AmsApi.Models.Attendee", b =>

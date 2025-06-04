@@ -13,9 +13,6 @@
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
 
-        // Foreign Key to Admin (One-to-Many)
-        public Guid AdminId { get; set; }
-        public Admin Admin { get; set; }  // Navigation Property
 
         // Navigation Property to AttendeeSubject (Many-to-Many)
         public List<AttendeeSubject> AttendeeSubjects { get; set; } = new();

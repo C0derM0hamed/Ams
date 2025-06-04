@@ -1,41 +1,36 @@
 ﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AmsApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize] // يحمي كل الأكشنات – الدور يتحدد في كل واحدة على حدة
     public class SubjectsController : ControllerBase
     {
         private readonly ISubjectService _svc;
         public SubjectsController(ISubjectService svc) => _svc = svc;
 
-        // GET /api/subjects
+        // GET /api/subjects (Admin فقط)
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromHeader] string jwtToken)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAll()
         {
-            var principal = JwtHelper.ValidateToken(jwtToken);
-            var role = principal?.FindFirst("role")?.Value;
-            if (principal == null || role != "Admin")
-                return Unauthorized();
             var list = await _svc.GetAllAsync();
             return Ok(list);
         }
 
-        // POST /api/subjects
+        // POST /api/subjects (Admin فقط)
         [HttpPost]
-        public async Task<IActionResult> Create(
-            [FromBody] CreateSubjectDto dto,
-            [FromHeader] string jwtToken)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Create([FromBody] CreateSubjectDto dto)
         {
-            var claims = JwtHelper.ValidateToken(jwtToken);
-            var adminId = claims?.FindFirst("adminId")?.Value;
-            if (claims == null || adminId == null)
-                return Unauthorized();
             var subj = await _svc.CreateAsync(dto);
             return CreatedAtAction(nameof(GetOne), new { subjectId = subj.Id }, subj);
         }
 
-        // GET /api/subjects/{subjectId}
+        // GET /api/subjects/{subjectId} (متاح للجميع)
         [HttpGet("{subjectId:guid}")]
         public async Task<IActionResult> GetOne(Guid subjectId)
         {
@@ -44,77 +39,49 @@ namespace AmsApi.Controllers
             return Ok(subj);
         }
 
-        // PATCH /api/subjects/{subjectId}
+        // PATCH /api/subjects/{subjectId} (Admin فقط)
         [HttpPatch("{subjectId:guid}")]
-        public async Task<IActionResult> Update(
-            Guid subjectId,
-            [FromBody] UpdateSubjectDto dto,
-            [FromHeader] string jwtToken)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Update(Guid subjectId, [FromBody] UpdateSubjectDto dto)
         {
-            var principal = JwtHelper.ValidateToken(jwtToken);
-            var role = principal?.FindFirst("role")?.Value;
-            if (principal == null || role != "Admin")
-                return Unauthorized();
             var updated = await _svc.UpdateAsync(subjectId, dto);
             if (updated == null) return NotFound();
             return Ok(updated);
         }
 
-        // DELETE /api/subjects/{subjectId}
+        // DELETE /api/subjects/{subjectId} (Admin فقط)
         [HttpDelete("{subjectId:guid}")]
-        public async Task<IActionResult> Delete(
-            Guid subjectId,
-            [FromHeader] string jwtToken)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(Guid subjectId)
         {
-            var principal = JwtHelper.ValidateToken(jwtToken);
-            var role = principal?.FindFirst("role")?.Value;
-            if (principal == null || role != "Admin")
-                return Unauthorized();
             var ok = await _svc.DeleteAsync(subjectId);
             if (!ok) return NotFound();
             return NoContent();
         }
 
-        // GET /api/subjects/{subjectId}/attendees
+        // GET /api/subjects/{subjectId}/attendees (Admin و Instructor فقط)
         [HttpGet("{subjectId:guid}/attendees")]
-        public async Task<IActionResult> GetAttendees(
-            Guid subjectId,
-            [FromHeader] string jwtToken)
+        [Authorize(Roles = "Admin,Instructor")]
+        public async Task<IActionResult> GetAttendees(Guid subjectId)
         {
-            var principal = JwtHelper.ValidateToken(jwtToken);
-            var role = principal?.FindFirst("role")?.Value;
-            if (principal == null || role == "Attendee")
-                return Unauthorized();
             var list = await _svc.GetAttendeesAsync(subjectId);
             return Ok(list);
         }
 
-        // POST /api/subjects/{subjectId}/subject_dates
+        // POST /api/subjects/{subjectId}/subject_dates (Admin فقط)
         [HttpPost("{subjectId:guid}/subject_dates")]
-        public async Task<IActionResult> AddDate(
-            Guid subjectId,
-            [FromBody] CreateSubjectDateDto dto,
-            [FromHeader] string jwtToken)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AddDate(Guid subjectId, [FromBody] CreateSubjectDateDto dto)
         {
-            var principal = JwtHelper.ValidateToken(jwtToken);
-            var role = principal?.FindFirst("role")?.Value;
-            if (principal == null || role != "Admin")
-                return Unauthorized();
             var sd = await _svc.AddSubjectDateAsync(subjectId, dto);
             return CreatedAtAction(null, new { subjectId = subjectId, subjectDateId = sd.Id }, sd);
         }
 
-        // DELETE /api/subjects/{subjectId}/subject_dates/{subjectDateId}
+        // DELETE /api/subjects/{subjectId}/subject_dates/{subjectDateId} (Admin فقط)
         [HttpDelete("{subjectId:guid}/subject_dates/{subjectDateId:guid}")]
-        public async Task<IActionResult> RemoveDate(
-            Guid subjectId,
-            Guid subjectDateId,
-            [FromHeader] string jwtToken)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> RemoveDate(Guid subjectId, Guid subjectDateId)
         {
-            var principal = JwtHelper.ValidateToken(jwtToken);
-            var role = principal?.FindFirst("role")?.Value;
-            if (principal == null || role != "Admin")
-                return Unauthorized();
             var ok = await _svc.RemoveSubjectDateAsync(subjectId, subjectDateId);
             if (!ok) return NotFound();
             return NoContent();

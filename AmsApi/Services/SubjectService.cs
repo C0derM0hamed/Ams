@@ -22,8 +22,6 @@
             var s = new Subject
             {
                 Name = dto.Name,
-                Description = dto.Description,
-                InstructorId = dto.InstructorId
             };
             _context.Subjects.Add(s);
             await _context.SaveChangesAsync();
@@ -37,9 +35,6 @@
 
             if (!string.IsNullOrWhiteSpace(dto.Name))
                 s.Name = dto.Name;
-
-            if (dto.Description != null)
-                s.Description = dto.Description;
 
             if (dto.InstructorId.HasValue)
                 s.InstructorId = dto.InstructorId; // can be null to unassign

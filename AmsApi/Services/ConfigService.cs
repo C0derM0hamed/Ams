@@ -38,3 +38,4 @@ public class ConfigService : IConfigService
         resp.EnsureSuccessStatusCode();
     }
 }
+

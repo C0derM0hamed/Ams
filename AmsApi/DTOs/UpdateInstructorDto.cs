@@ -11,7 +11,5 @@
 
         public string? Password { get; set; }
 
-
-        public byte[]? ImageBytes { get; set; }
     }
 }

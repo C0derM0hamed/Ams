@@ -2,15 +2,15 @@
 
 public interface IInstructorService
 {
-    Task<List<Instructor>> GetAllAsync();
-    Task<Instructor?> GetByIdAsync(Guid id);
+    Task<List<InstructorListDto>> GetAllAsync();
+    Task<InstructorDetailsDto?> GetByIdAsync(Guid id);
     Task<Instructor?> GetByEmailAsync(string email);
     Task<Instructor> CreateAsync(CreateInstructorDto dto);
     Task<Instructor?> UpdateAsync(Guid id, UpdateInstructorDto dto);
     Task<bool> DeleteAsync(Guid id);
 
-    Task<List<Subject>> GetSubjectsForInstructorAsync(Guid instructorId);
-    Task<Subject?> GetSubjectForInstructorAsync(Guid instructorId, Guid subjectId);
+    Task<List<SubjectSimpleDto>> GetSubjectsForInstructorAsync(Guid instructorId);
+    Task<SubjectSimpleDto?> GetSubjectForInstructorAsync(Guid instructorId, Guid subjectId);
     Task<bool> AssignSubjectToInstructorAsync(Guid instructorId, Guid subjectId);
     Task<bool> RemoveSubjectFromInstructorAsync(Guid instructorId, Guid subjectId);
 

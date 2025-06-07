@@ -1,4 +1,5 @@
-﻿using static System.Net.WebRequestMethods;
+﻿using Microsoft.IdentityModel.Tokens;
+using static System.Net.WebRequestMethods;
 
 public class AttendeeService : IAttendeeService
 {
@@ -28,30 +29,32 @@ public class AttendeeService : IAttendeeService
         return attendee;
     }
 
-    public async Task<Attendee> UpdateAsync(Guid id, UpdateAttendeeDto dto)
+    public async Task<UpdateAttendeeDto?> UpdateAsync(Guid id, UpdateAttendeeDto dto)
+{
+    var attendee = await _context.Attendees.FindAsync(id);
+    if (attendee == null) return null;
+
+    if (!string.IsNullOrWhiteSpace(dto.FullName))
+        attendee.FullName = dto.FullName;
+
+    if (!string.IsNullOrWhiteSpace(dto.Email))
+        attendee.Email = dto.Email;
+
+    if (!string.IsNullOrWhiteSpace(dto.Password))
+        attendee.Password = dto.Password;
+
+    if (dto.Number.HasValue)
+        attendee.Number = dto.Number.Value;
+    await _context.SaveChangesAsync();
+
+    return new UpdateAttendeeDto
     {
-        var attendee = await _context.Attendees.FindAsync(id);
-        if (attendee == null) return null;
-
-        if (!string.IsNullOrWhiteSpace(dto.FullName)) attendee.FullName = dto.FullName;
-        if (!string.IsNullOrWhiteSpace(dto.Email)) attendee.Email = dto.Email;
-        if (!string.IsNullOrWhiteSpace(dto.Password)) attendee.Password = dto.Password;
-        if (dto.Number.HasValue) attendee.Number = dto.Number.Value;
-
-        if (dto.Image != null)
-        {
-            var imagePath = await SaveImage(attendee.Id, dto.Image);
-            attendee.ImagePath = imagePath;
-        }
-
-        if (dto.Embedding != null)
-        {
-            attendee.Embedding = dto.Embedding;
-        }
-
-        await _context.SaveChangesAsync();
-        return attendee;
-    }
+        FullName = attendee.FullName,
+        Email = attendee.Email,
+        Password = attendee.Password,
+        Number = attendee.Number,
+    };
+}
 
     public async Task<AttendeeDetailsDto?> GetByIdAsync(Guid id)
     {
@@ -145,13 +148,29 @@ public class AttendeeService : IAttendeeService
         return true;
     }
 
-    public async Task<Subject> GetSubjectForAttendee(Guid attendeeId, Guid subjectId)
+    public async Task<SubjectSimpleDto?> GetSubjectForAttendee(Guid attendeeId, Guid subjectId)
     {
-        var subject = await _context.Subjects
-                                    .FirstOrDefaultAsync(s => s.Id == subjectId &&
-                                                               s.AttendeeSubjects.Any(a => a.AttendeeId == attendeeId));
-        return subject;
+        return await _context.AttendeeSubjects
+            .Where(x => x.AttendeeId == attendeeId && x.SubjectId == subjectId)
+            .Select(x => new SubjectSimpleDto
+            {
+                Name = x.Subject.Name,
+                CreatedAt = x.Subject.CreateAt.UtcDateTime
+            })
+            .FirstOrDefaultAsync();
     }
+    public async Task<List<SubjectSimpleDto>> GetSubjectsForAttendeeAsync(Guid attendeeId)
+    {
+        return await _context.AttendeeSubjects
+            .Where(x => x.AttendeeId == attendeeId)
+            .Select(x => new SubjectSimpleDto
+            {
+                Name = x.Subject.Name,
+                CreatedAt = x.Subject.CreateAt.UtcDateTime
+            })
+            .ToListAsync();
+    }
+
     public async Task UploadImageAsync(Guid attendeeId, byte[] imageBytes)
     {
         var attendee = await _context.Attendees.FindAsync(attendeeId);
@@ -188,21 +207,6 @@ public class AttendeeService : IAttendeeService
         await _context.SaveChangesAsync();
 
         return true;
-    }
-    // تنفيذ الدالة لاسترجاع الموضوعات الخاصة بالمتدرب
-    public async Task<List<Subject>> GetSubjectsForAttendeeAsync(Guid attendeeId)
-    {
-        var attendee = await _context.Attendees
-            .Include(a => a.AttendeeSubjects) // ربط الموضوعات بالمتدرب
-            .ThenInclude(s => s.Subject) // تضمين الـ Subject الخاص بكل موضوع
-            .FirstOrDefaultAsync(a => a.Id == attendeeId);
-
-        if (attendee == null)
-        {
-            throw new Exception("Attendee not found");
-        }
-
-        return attendee.AttendeeSubjects.Select(s => s.Subject).ToList(); // إرجاع الموضوعات
     }
 
 

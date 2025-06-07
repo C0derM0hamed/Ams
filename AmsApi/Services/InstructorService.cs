@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using static System.Net.WebRequestMethods;
 
 namespace AmsApi.Services;
 
@@ -15,19 +16,49 @@ public class InstructorService : IInstructorService
 {
     private readonly AmsDbContext _context;
     private readonly string _assetsRoot;
+    private readonly IHttpContextAccessor _http;
 
-    public InstructorService(AmsDbContext context, IWebHostEnvironment env)
+    public InstructorService(AmsDbContext context, IWebHostEnvironment env, IHttpContextAccessor http)
     {
         _context = context;
-        // We'll save images under wwwroot/instructors/{id}/image.png
+        _http = http;
         _assetsRoot = Path.Combine(env.WebRootPath, "instructors");
     }
 
-    public async Task<List<Instructor>> GetAllAsync()
-        => await _context.Instructors.ToListAsync();
+    public async Task<List<InstructorListDto>> GetAllAsync()
+    {
+        return await _context.Instructors
+            .Select(i => new InstructorListDto
+            {
+                Id = i.Id,
+                FullName = i.FullName,
+                 ImagePath = string.IsNullOrEmpty(i.ImagePath)
+                ? null
+                : $"{_http.HttpContext.Request.Scheme}://{_http.HttpContext.Request.Host}{i.ImagePath}"
+            })
+            .ToListAsync();
+    }
 
-    public async Task<Instructor?> GetByIdAsync(Guid id)
-        => await _context.Instructors.FindAsync(id);
+    public async Task<InstructorDetailsDto?> GetByIdAsync(Guid id)
+    {
+        var instructor = await _context.Instructors
+            .Include(i => i.Subjects)
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (instructor == null) return null;
+
+        return new InstructorDetailsDto
+        {
+            FullName = instructor.FullName,
+            Email = instructor.Email,
+            Password = instructor.Password,
+            Number = instructor.Number,
+            ImagePath = string.IsNullOrEmpty(instructor.ImagePath)
+                ? null
+                : $"{_http.HttpContext.Request.Scheme}://{_http.HttpContext.Request.Host}{instructor.ImagePath}",
+            SubjectNames = instructor.Subjects.Select(s => s.Name).ToList()
+        };
+    }
 
     public async Task<Instructor?> GetByEmailAsync(string email)
         => await _context.Instructors.FirstOrDefaultAsync(x => x.Email == email);
@@ -40,7 +71,6 @@ public class InstructorService : IInstructorService
             Email = dto.Email,
             Password = dto.Password,
             Number = dto.Number,
-            
         };
 
         _context.Instructors.Add(instructor);
@@ -65,12 +95,6 @@ public class InstructorService : IInstructorService
         if (dto.Number.HasValue)
             inst.Number = dto.Number.Value;
 
-        if (dto.ImageBytes != null)
-        {
-            var path = await SaveImageAsync(id, dto.ImageBytes);
-            inst.ImagePath = path;
-        }
-
         await _context.SaveChangesAsync();
         return inst;
     }
@@ -84,17 +108,28 @@ public class InstructorService : IInstructorService
         return true;
     }
 
-    public async Task<List<Subject>> GetSubjectsForInstructorAsync(Guid instructorId)
+    public async Task<List<SubjectSimpleDto>> GetSubjectsForInstructorAsync(Guid instructorId)
     {
         return await _context.Subjects
             .Where(s => s.InstructorId == instructorId)
+            .Select(s => new SubjectSimpleDto
+            {
+                Name = s.Name,
+                CreatedAt = s.CreateAt.UtcDateTime
+            })
             .ToListAsync();
     }
 
-    public async Task<Subject?> GetSubjectForInstructorAsync(Guid instructorId, Guid subjectId)
+    public async Task<SubjectSimpleDto?> GetSubjectForInstructorAsync(Guid instructorId, Guid subjectId)
     {
         return await _context.Subjects
-            .FirstOrDefaultAsync(s => s.Id == subjectId && s.InstructorId == instructorId);
+            .Where(s => s.Id == subjectId && s.InstructorId == instructorId)
+            .Select(s => new SubjectSimpleDto
+            {
+                Name = s.Name,
+                CreatedAt = s.CreateAt.UtcDateTime
+            })
+            .FirstOrDefaultAsync();
     }
 
     public async Task<bool> AssignSubjectToInstructorAsync(Guid instructorId, Guid subjectId)
@@ -118,20 +153,39 @@ public class InstructorService : IInstructorService
 
     public async Task<string> UploadImageAsync(Guid instructorId, byte[] imageBytes)
     {
-        var dir = Path.Combine(_assetsRoot, instructorId.ToString());
-        Directory.CreateDirectory(dir);
-        var filePath = Path.Combine(dir, "image.png");
-        await File.WriteAllBytesAsync(filePath, imageBytes);
+        var relativePath = Path.Combine("instructors", instructorId.ToString());
+        var dir = Path.Combine("wwwroot", relativePath);
 
-        // Update DB record
+        Directory.CreateDirectory(dir);
+
+        var fileName = "Instructor.png";
+        var fullPath = Path.Combine(dir, fileName);
+
+        await System.IO.File.WriteAllBytesAsync(fullPath, imageBytes);
+
         var inst = await _context.Instructors.FindAsync(instructorId);
         if (inst == null) throw new InvalidOperationException("Instructor not found");
-        inst.ImagePath = filePath;
+
+        // ✅ احفظ المسار النسبي
+        inst.ImagePath = $"/{relativePath.Replace("\\", "/")}/{fileName}";
         await _context.SaveChangesAsync();
-        return filePath;
+
+        return inst.ImagePath;
     }
 
-    private Task<string> SaveImageAsync(Guid instructorId, byte[] bytes)
-        => UploadImageAsync(instructorId, bytes);
-}
 
+    private async Task<string> SaveImage(Guid InstrutorId, byte[] image)
+    {
+        var attendeeDir = Path.Combine("wwwroot", "Instructor", InstrutorId.ToString());
+
+        if (!Directory.Exists(attendeeDir))
+            Directory.CreateDirectory(attendeeDir);
+
+        var fileName = "Instructor.png";
+        var fullPath = Path.Combine(attendeeDir, fileName);
+
+        await System.IO.File.WriteAllBytesAsync(fullPath, image);
+
+        return $"/Instructor/{InstrutorId}/{fileName}";
+    }
+}

@@ -1,4 +1,5 @@
-﻿using AmsApi.Models;
+﻿using AmsApi.Interfaces;
+using AmsApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
@@ -11,12 +12,12 @@ namespace AmsApi.Controllers;
 [Authorize]
 public class InstructorsController : ControllerBase
 {
-    private readonly IInstructorService _service;
+    private readonly IInstructorService _InstructorService;
     private readonly IJwtHelper _jwtHelper;
 
     public InstructorsController(IInstructorService service, IJwtHelper jwtHelper)
     {
-        _service = service;
+        _InstructorService = service;
         _jwtHelper = jwtHelper;
     }
 
@@ -24,7 +25,7 @@ public class InstructorsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetAll()
     {
-        var list = await _service.GetAllAsync();
+        var list = await _InstructorService.GetAllAsync();
         return Ok(list);
     }
 
@@ -32,7 +33,7 @@ public class InstructorsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateInstructorDto dto)
     {
-        var inst = await _service.CreateAsync(dto);
+        var inst = await _InstructorService.CreateAsync(dto);
         return CreatedAtAction(nameof(GetOne), new { instructorId = inst.Id }, inst);
     }
 
@@ -40,7 +41,7 @@ public class InstructorsController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginDto payload)
     {
-        var inst = await _service.GetByEmailAsync(payload.Username);
+        var inst = await _InstructorService.GetByEmailAsync(payload.Username);
         if (inst == null || inst.Password != payload.Password)
             return Unauthorized();
 
@@ -48,28 +49,12 @@ public class InstructorsController : ControllerBase
         return Ok(new { token });
     }
 
-    [HttpGet("login")]
-    public async Task<IActionResult> LoginWithToken()
-    {
-        var role = User.FindFirst("role")?.Value;
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (role != "Instructor" || userId == null)
-            return Unauthorized();
-
-        var inst = await _service.GetByIdAsync(Guid.Parse(userId));
-        if (inst == null) return NotFound();
-        return Ok(inst);
-    }
 
     [HttpGet("{instructorId:guid}")]
+    [Authorize(Roles ="Admin")]
     public async Task<IActionResult> GetOne(Guid instructorId)
     {
-        var role = User.FindFirst("role")?.Value;
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (role != "Admin" && userId != instructorId.ToString())
-            return Unauthorized();
-
-        var inst = await _service.GetByIdAsync(instructorId);
+        var inst = await _InstructorService.GetByIdAsync(instructorId);
         if (inst == null) return NotFound();
         return Ok(inst);
     }
@@ -78,63 +63,71 @@ public class InstructorsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(Guid instructorId, [FromBody] UpdateInstructorDto dto)
     {
-        var updated = await _service.UpdateAsync(instructorId, dto);
+        var updated = await _InstructorService.UpdateAsync(instructorId, dto);
         if (updated == null) return NotFound();
-        return Ok(updated);
+        return NoContent();
     }
 
     [HttpDelete("{instructorId:guid}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid instructorId)
     {
-        var ok = await _service.DeleteAsync(instructorId);
+        var ok = await _InstructorService.DeleteAsync(instructorId);
         if (!ok) return NotFound();
         return NoContent();
     }
 
-    [HttpPost("{instructorId:guid}/image")]
+    [HttpPost("{instructorId}/image")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> UploadImage(Guid instructorId, IFormFile file)
+    public async Task<IActionResult> UploadImage(Guid instructorId, [FromForm] IFormFile file)
     {
         if (file == null || file.Length == 0)
-            return BadRequest("No file");
+            return BadRequest(new { message = "No image file uploaded" });
 
         using var ms = new MemoryStream();
         await file.CopyToAsync(ms);
-        var path = await _service.UploadImageAsync(instructorId, ms.ToArray());
-        return Ok(new { imagePath = path });
+
+        try
+        {
+            await _InstructorService.UploadImageAsync(instructorId, ms.ToArray());
+
+            var imageUrl = $"{Request.Scheme}://{Request.Host}//Instructors/{instructorId}/Instructor.png";
+
+
+            return Ok(new
+            {
+                message = "Image uploaded successfully",
+                imageUrl
+            });
+        }
+        catch (Exception ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpGet("{instructorId:guid}/subjects")]
+    [Authorize(Roles ="Admin")]
     public async Task<IActionResult> GetSubjects(Guid instructorId)
     {
-        var role = User.FindFirst("role")?.Value;
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (role != "Admin" && userId != instructorId.ToString())
-            return Unauthorized();
-
-        var list = await _service.GetSubjectsForInstructorAsync(instructorId);
+        var list = await _InstructorService.GetSubjectsForInstructorAsync(instructorId);
         return Ok(list);
     }
 
-    [HttpGet("{instructorId:guid}/subjects/{subjectId:guid}")]
+    [HttpGet("{instructorId}/subjects/{subjectId}")]
+    [Authorize(Roles ="Admin")]
     public async Task<IActionResult> GetSubject(Guid instructorId, Guid subjectId)
     {
-        var role = User.FindFirst("role")?.Value;
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (role != "Admin" && userId != instructorId.ToString())
-            return Unauthorized();
-
-        var subj = await _service.GetSubjectForInstructorAsync(instructorId, subjectId);
+        var subj = await _InstructorService.GetSubjectForInstructorAsync(instructorId, subjectId);
         if (subj == null) return NotFound();
         return Ok(subj);
     }
 
-    [HttpPut("{instructorId:guid}/subjects/{subjectId:guid}")]
+    [HttpPut("{instructorId}/subjects/{subjectId}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AssignSubject(Guid instructorId, Guid subjectId)
     {
-        var ok = await _service.AssignSubjectToInstructorAsync(instructorId, subjectId);
+        var ok = await _InstructorService.AssignSubjectToInstructorAsync(instructorId, subjectId);
         if (!ok) return NotFound();
         return Ok();
     }
@@ -143,7 +136,7 @@ public class InstructorsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UnassignSubject(Guid instructorId, Guid subjectId)
     {
-        var ok = await _service.RemoveSubjectFromInstructorAsync(instructorId, subjectId);
+        var ok = await _InstructorService.RemoveSubjectFromInstructorAsync(instructorId, subjectId);
         if (!ok) return NotFound();
         return NoContent();
     }

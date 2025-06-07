@@ -81,7 +81,7 @@ namespace AmsApi.Controllers
             return CreatedAtAction(nameof(GetOne), new { id = attendee.Id }, attendee);
         }
 
-   [HttpPost("{attendee_id}/image")]
+[HttpPost("{attendee_id}/image")]
 [Authorize(Roles = "Admin")]
 public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormFile file)
 {
@@ -109,9 +109,6 @@ public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormF
         return NotFound(new { message = ex.Message });
     }
 }
-
-
-
         [HttpPatch("{attendee_id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(Guid attendee_id, [FromBody] UpdateAttendeeDto dto)
@@ -122,7 +119,6 @@ public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormF
 
             return Ok(updatedAttendee);
         }
-
         [HttpDelete("{attendee_id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Guid attendee_id)
@@ -133,20 +129,13 @@ public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormF
 
             return NoContent();
         }
-
         [HttpGet("{attendee_id}/subjects/{subject_id}")]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> GetOneSubjectForOne(Guid attendee_id, Guid subject_id)
         {
-            var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (role != "Admin" && userId != attendee_id.ToString())
-                return Unauthorized(new { message = "Unauthorized access" });
-
             var subject = await _attendeeService.GetSubjectForAttendee(attendee_id, subject_id);
             if (subject == null)
                 return NotFound();
-
             return Ok(subject);
         }
 
@@ -160,7 +149,7 @@ public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormF
                 return Unauthorized(new { message = "Unauthorized access" });
 
             var subjects = await _attendeeService.GetSubjectsForAttendeeAsync(attendee_id);
-            return Ok(new { message = "Retrieved associated subjects successfully", subjects });
+            return Ok(new { subjects });
         }
 
         [HttpPut("{attendee_id}/subjects/{subject_id}")]

@@ -7,13 +7,13 @@ namespace AmsApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    [Authorize] // يحمي كل الأكشنات – الدور يتحدد في كل واحدة على حدة
+    [Authorize] 
     public class SubjectsController : ControllerBase
     {
         private readonly ISubjectService SubjectService;
         public SubjectsController(ISubjectService svc) => SubjectService = svc;
 
-        // GET /api/subjects (Admin فقط)
+        // GET /subjects (Admin فقط)
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAll()
@@ -22,7 +22,7 @@ namespace AmsApi.Controllers
             return Ok(subjects);
         }
 
-        // POST /api/subjects (Admin فقط)
+        // POST /subjects (Admin فقط)
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] CreateSubjectDto dto)
@@ -31,7 +31,7 @@ namespace AmsApi.Controllers
             return StatusCode(201);
         }
 
-        // GET /api/subjects/{subjectId} (متاح للجميع)
+        // GET /subjects/{subjectId} (متاح للجميع)
         [HttpGet("{subjectId:guid}")]
         public async Task<IActionResult> GetOne(Guid subjectId)
         {
@@ -40,7 +40,7 @@ namespace AmsApi.Controllers
             return Ok(subj);
         }
 
-        // PATCH /api/subjects/{subjectId} (Admin فقط)
+        // PATCH /subjects/{subjectId} (Admin فقط)
         [HttpPatch("{subjectId:guid}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(Guid subjectId, [FromBody] UpdateSubjectDto dto)
@@ -50,7 +50,7 @@ namespace AmsApi.Controllers
             return Ok(updated);
         }
 
-        // DELETE /api/subjects/{subjectId} (Admin فقط)
+        // DELETE /subjects/{subjectId} (Admin فقط)
         [HttpDelete("{subjectId:guid}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(Guid subjectId)
@@ -60,7 +60,7 @@ namespace AmsApi.Controllers
             return NoContent();
         }
 
-        // GET /api/subjects/{subjectId}/attendees (Admin و Instructor فقط)
+        // GET /subjects/{subjectId}/attendees (Admin و Instructor فقط)
         [HttpGet("{subjectId:guid}/attendees")]
         [Authorize(Roles = "Admin,Instructor")]
         public async Task<IActionResult> GetAttendees(Guid subjectId)
@@ -69,7 +69,7 @@ namespace AmsApi.Controllers
             return Ok(list);
         }
 
-        // POST /api/subjects/{subjectId}/subject_dates (Admin فقط)
+        // POST /subjects/{subjectId}/subject_dates (Admin فقط)
         [HttpPost("{subjectId:guid}/subject_dates")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddDate(Guid subjectId, [FromBody] CreateSubjectDateDto dto)
@@ -78,7 +78,7 @@ namespace AmsApi.Controllers
             return CreatedAtAction(null, new { subjectId = subjectId, subjectDateId = sd.Id }, sd);
         }
 
-        // DELETE /api/subjects/{subjectId}/subject_dates/{subjectDateId} (Admin فقط)
+        // DELETE /subjects/{subjectId}/subject_dates/{subjectDateId} (Admin فقط)
         [HttpDelete("{subjectId:guid}/subject_dates/{subjectDateId:guid}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RemoveDate(Guid subjectId, Guid subjectDateId)

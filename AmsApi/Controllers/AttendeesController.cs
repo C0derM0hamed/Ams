@@ -4,27 +4,28 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using System.IO.Compression;
+using System.Security.Claims;
 
 namespace AmsApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    
-   
     public class AttendeesController : ControllerBase
     {
         private readonly IAttendeeService _attendeeService;
         private readonly IFaceRecognizer _faceRecognizer;
         private readonly IJwtHelper _jwtHelper;
+        private readonly string _pythonUrl;
 
         public AttendeesController(
             IAttendeeService attendeeService,
             IFaceRecognizer faceRecognizer,
-            IJwtHelper jwtHelper)
+            IJwtHelper jwtHelper,IConfiguration config)
         {
             _attendeeService = attendeeService;
             _faceRecognizer = faceRecognizer;
             _jwtHelper = jwtHelper;
+            _pythonUrl = config["PythonFaceRec:BaseUrl"]!;
         }
 
         public enum FaceRecognitionMode
@@ -34,11 +35,10 @@ namespace AmsApi.Controllers
         }
 
         [HttpGet("test-auth")]
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public IActionResult TestAuth()
         {
-            var user = User.Identity;
-            return Ok(new { name = user.Name, authenticated = user.IsAuthenticated, claims = User.Claims.Select(c => new { c.Type, c.Value }) });
+            return Ok(User.Claims.Select(c => new { c.Type, c.Value }));
         }
 
         [AllowAnonymous]
@@ -53,41 +53,19 @@ namespace AmsApi.Controllers
             return Ok(new { token });
         }
 
-        [HttpGet("login")]
-        public async Task<IActionResult> LoginWithToken()
-        {
-            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            var role = User.FindFirst("role")?.Value;
-
-            if (role != "Attendee" || userId == null)
-                return Unauthorized(new { message = "Unauthorized access" });
-
-            var attendee = await _attendeeService.GetByIdAsync(Guid.Parse(userId));
-            if (attendee == null)
-                return NotFound();
-
-            return Ok(attendee);
-        }
-
         [HttpGet]
-        [Authorize(Roles ="Attendee")]
-        //[AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAll()
         {
-            var attendees = await _attendeeService.GetAllAsync();
+            var attendees = await _attendeeService.GetAllAsync(); // بيرجع List<AttendeeSummaryDto>
             return Ok(attendees);
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetOne(Guid id)
         {
-            var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-            if (role != "Admin" && userId != id.ToString())
-                return Unauthorized(new { message = "Unauthorized access" });
-
-            var attendee = await _attendeeService.GetByIdAsync(id);
+            var attendee = await _attendeeService.GetByIdAsync(id); // بيرجع AttendeeDetailsDto
             if (attendee == null)
                 return NotFound();
 
@@ -96,76 +74,43 @@ namespace AmsApi.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        //[AllowAnonymous]
         public async Task<IActionResult> Create([FromBody] CreateAttendeeDto dto)
         {
-            var adminId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var attendee = await _attendeeService.CreateAsync(dto, Guid.Parse(adminId));
             return CreatedAtAction(nameof(GetOne), new { id = attendee.Id }, attendee);
         }
 
-        [HttpPost("image")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAllWithImage([FromForm] IFormFile file)
+   [HttpPost("{attendee_id}/image")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormFile file)
+{
+    if (file == null || file.Length == 0)
+        return BadRequest(new { message = "No image file uploaded" });
+
+    using var ms = new MemoryStream();
+    await file.CopyToAsync(ms);
+
+    try
+    {
+        await _attendeeService.UploadImageAsync(attendee_id, ms.ToArray());
+
+                var imageUrl = $"{Request.Scheme}://{Request.Host}/uploads/{attendee_id}/profile.png";
+
+
+                return Ok(new
         {
-            if (file == null || file.Length == 0)
-                return BadRequest(new { message = "No image file uploaded" });
+            message = "Image uploaded successfully",
+            imageUrl
+        });
+    }
+    catch (Exception ex)
+    {
+        return NotFound(new { message = ex.Message });
+    }
+}
 
-            var imageBytes = await ReadFileAsync(file);
-            var attendees = await _attendeeService.GetAllAsync();
-            var attendeesWithImage = await ProcessImageForFaceRecognition(attendees, imageBytes);
 
-            return Ok(new { message = "Retrieved all attendees successfully", attendees = attendeesWithImage });
-        }
-
-        private async Task<byte[]> ReadFileAsync(IFormFile file)
-        {
-            using var memoryStream = new MemoryStream();
-            await file.CopyToAsync(memoryStream);
-            return memoryStream.ToArray();
-        }
-
-        private async Task<List<Attendee>> ProcessImageForFaceRecognition(List<Attendee> attendees, byte[] image)
-        {
-            var resultAttendees = new List<Attendee>();
-            var faceRecognitionMode = FaceRecognitionMode.Embed;
-
-            switch (faceRecognitionMode)
-            {
-                case FaceRecognitionMode.Embed:
-                    var embedding = await _faceRecognizer.EmbedAsync(image);
-                    resultAttendees = attendees
-                        .Where(a => a.Embedding != null && GetDistance(a.Embedding, embedding) < 0.6)
-                        .ToList();
-                    break;
-                case FaceRecognitionMode.Classify:
-                    var classId = await _faceRecognizer.ClassifyAsync(image);
-                    resultAttendees = attendees
-                        .Where(a => a.Id == classId)
-                        .ToList();
-                    break;
-            }
-
-            return resultAttendees;
-        }
-
-        private double GetDistance(double[] e1, double[] e2)
-        {
-            return e1.Zip(e2, (x, y) => Math.Pow(x - y, 2)).Sum();
-        }
-
-        [HttpPost("{attendee_id}/image")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormFile file)
-        {
-            if (file == null || file.Length == 0)
-                return BadRequest(new { message = "No image file uploaded" });
-
-            var imageBytes = await ImageHelper.SaveImageAsync(file);
-            await _attendeeService.UploadImageAsync(attendee_id, imageBytes);
-
-            return Ok(new { message = "Image uploaded successfully" });
-        }
 
         [HttpPatch("{attendee_id}")]
         [Authorize(Roles = "Admin")]
@@ -193,7 +138,7 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> GetOneSubjectForOne(Guid attendee_id, Guid subject_id)
         {
             var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (role != "Admin" && userId != attendee_id.ToString())
                 return Unauthorized(new { message = "Unauthorized access" });
@@ -209,7 +154,7 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> GetAllSubjectsForAttendee(Guid attendee_id)
         {
             var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (role == "Attendee" && userId != attendee_id.ToString())
                 return Unauthorized(new { message = "Unauthorized access" });
@@ -255,13 +200,17 @@ namespace AmsApi.Controllers
             var tempPath = Path.GetTempPath();
             var zipPath = Path.Combine(tempPath, $"{studentNumber}_training.zip");
 
+            if (System.IO.File.Exists(zipPath))
+                System.IO.File.Delete(zipPath);
             using (var archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
             {
                 foreach (var file in files)
                 {
                     var filePath = Path.Combine(tempPath, file.FileName);
-                    using var stream = new FileStream(filePath, FileMode.Create);
-                    await file.CopyToAsync(stream);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
                     archive.CreateEntryFromFile(filePath, file.FileName);
                     System.IO.File.Delete(filePath);
                 }
@@ -276,7 +225,7 @@ namespace AmsApi.Controllers
             using var content = new MultipartFormDataContent();
             content.Add(new ByteArrayContent(await System.IO.File.ReadAllBytesAsync(zipPath)), "file", $"{studentNumber}_training.zip");
 
-            var response = await client.PostAsync("https://ba04-156-209-187-195.ngrok-free.app/upload_training_images", content);
+            var response = await client.PostAsync($"{_pythonUrl}/upload_training_images", content);
             var result = await response.Content.ReadAsStringAsync();
 
             System.IO.File.Delete(zipPath);

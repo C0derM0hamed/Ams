@@ -2,8 +2,8 @@
 {
     public interface ISubjectService
     {
-        Task<List<Subject>> GetAllAsync();
-        Task<Subject?> GetByIdAsync(Guid id);
+        Task<List<SubjectListDto>> GetAllAsync();
+        Task<SubjectDetailsDto?> GetByIdAsync(Guid id);
         Task<Subject> CreateAsync(CreateSubjectDto dto);
         Task<Subject?> UpdateAsync(Guid id, UpdateSubjectDto dto);
         Task<bool> DeleteAsync(Guid id);

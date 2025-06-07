@@ -2,11 +2,11 @@
 {
     public interface IAttendeeService
     {
-        Task<Attendee> GetByIdAsync(Guid id);
+        Task<AttendeeDetailsDto> GetByIdAsync(Guid id);
         Task<Attendee> CreateAsync(CreateAttendeeDto dto , Guid adminId);
         Task<Attendee> UpdateAsync(Guid id, UpdateAttendeeDto dto);
         Task<bool> DeleteAsync(Guid id);
-        Task<List<Attendee>> GetAllAsync();
+        Task<List<AttendeeSummaryDto>> GetAllAsync();
         Task UploadImageAsync(Guid attendeeId, byte[] imageBytes);
         Task<bool> AddSubjectToAttendee(Guid attendeeId, Guid subjectId);
         Task<Subject> GetSubjectForAttendee(Guid attendeeId, Guid subjectId);

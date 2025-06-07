@@ -1,12 +1,16 @@
-﻿public class AttendeeService : IAttendeeService
+﻿using static System.Net.WebRequestMethods;
+
+public class AttendeeService : IAttendeeService
 {
     private readonly AmsDbContext _context;
     private readonly string _assetsPath;
+    private readonly IHttpContextAccessor _http;
 
-    public AttendeeService(AmsDbContext context,IConfiguration config)
+    public AttendeeService(AmsDbContext context,IConfiguration config, IHttpContextAccessor http)
     {
         _context = context;
         _assetsPath = config["AssetsPath"] ?? "wwwroot/assets"; // fallback default
+        _http = http;
     }
 
     public async Task<Attendee> CreateAsync(CreateAttendeeDto dto, Guid adminId)
@@ -16,9 +20,7 @@
             FullName = dto.FullName,
             Email = dto.Email,
             Password = dto.Password,
-            Number = dto.Number,
-            
-
+            Number = dto.Number,   
         };
 
         _context.Attendees.Add(attendee);
@@ -38,7 +40,7 @@
 
         if (dto.Image != null)
         {
-            var imagePath = await SaveImage(attendee, dto.Image);
+            var imagePath = await SaveImage(attendee.Id, dto.Image);
             attendee.ImagePath = imagePath;
         }
 
@@ -51,9 +53,26 @@
         return attendee;
     }
 
-    public async Task<Attendee> GetByIdAsync(Guid id)
+    public async Task<AttendeeDetailsDto?> GetByIdAsync(Guid id)
     {
-        return await _context.Attendees.FindAsync(id);
+        var attendee = await _context.Attendees
+            .Include(a => a.AttendeeSubjects)
+            .ThenInclude(asb => asb.Subject)
+            .FirstOrDefaultAsync(a => a.Id == id);
+
+        if (attendee == null) return null;
+
+        return new AttendeeDetailsDto
+        {
+            FullName = attendee.FullName,
+            Email = attendee.Email,
+            Number=attendee.Number,
+            Password = attendee.Password,
+            ImagePath = string.IsNullOrEmpty(attendee.ImagePath)
+                ? null
+                : $"{_http.HttpContext.Request.Scheme}://{_http.HttpContext.Request.Host}/{attendee.ImagePath}",
+            SubjectNames = attendee.AttendeeSubjects.Select(s => s.Subject.Name).ToList()
+        };
     }
 
     public async Task<bool> DeleteAsync(Guid id)
@@ -66,9 +85,20 @@
         return true;
     }
 
-    public async Task<List<Attendee>> GetAllAsync()
+    public async Task<List<AttendeeSummaryDto>> GetAllAsync()
     {
-        return await _context.Attendees.ToListAsync();
+        var attendees = await _context.Attendees.ToListAsync();
+
+        var result = attendees.Select(a => new AttendeeSummaryDto
+        {
+            Id = a.Id,
+            FullName = a.FullName,
+            ImagePath = string.IsNullOrEmpty(a.ImagePath)
+                ? null
+                : $"{_http.HttpContext.Request.Scheme}://{_http.HttpContext.Request.Host}/{a.ImagePath}"
+        }).ToList();
+
+        return result;
     }
 
     public async Task<Attendee> GetByEmailAsync(string email)
@@ -77,19 +107,20 @@
                              .FirstOrDefaultAsync(a => a.Email == email);
     }
 
-    private async Task<string> SaveImage(Attendee attendee, byte[] image)
+    private async Task<string> SaveImage(Guid attendeeId, byte[] image)
     {
-        var attendeeDir = Path.Combine(_assetsPath, attendee.Id.ToString());
+        var attendeeDir = Path.Combine("wwwroot", "uploads", attendeeId.ToString());
 
         if (!Directory.Exists(attendeeDir))
-        {
             Directory.CreateDirectory(attendeeDir);
-        }
 
-        var imagePath = Path.Combine(attendeeDir, "profile.png");
-        await File.WriteAllBytesAsync(imagePath, image);
+        var fileName = "profile.png";
+        var fullPath = Path.Combine(attendeeDir, fileName);
 
-        return imagePath;
+        await System.IO.File.WriteAllBytesAsync(fullPath, image);
+
+        //  يرجع المسار النسبي للعرض في الفرونت
+        return $"/uploads/{attendeeId}/profile.png";
     }
     public async Task<bool> AddSubjectToAttendee(Guid attendeeId, Guid subjectId)
     {
@@ -125,13 +156,11 @@
     {
         var attendee = await _context.Attendees.FindAsync(attendeeId);
         if (attendee == null)
-        {
             throw new Exception("Attendee not found");
-        }
 
-        // حفظ الصورة في المسار المناسب أو في قاعدة البيانات
-        // في هذه الحالة، نقوم بتخزين مسار الصورة فقط
-        attendee.ImagePath = "path_to_image";  // هنا يمكنك تخزين الصورة أو مسارها
+        var imagePath = await SaveImage(attendee.Id, imageBytes);
+        attendee.ImagePath = imagePath;
+
         await _context.SaveChangesAsync();
     }
     // تنفيذ إزالة الموضوع من المتدرب

@@ -52,7 +52,7 @@ public class InstructorsController : ControllerBase
     public async Task<IActionResult> LoginWithToken()
     {
         var role = User.FindFirst("role")?.Value;
-        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (role != "Instructor" || userId == null)
             return Unauthorized();
 
@@ -65,7 +65,7 @@ public class InstructorsController : ControllerBase
     public async Task<IActionResult> GetOne(Guid instructorId)
     {
         var role = User.FindFirst("role")?.Value;
-        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (role != "Admin" && userId != instructorId.ToString())
             return Unauthorized();
 
@@ -109,7 +109,7 @@ public class InstructorsController : ControllerBase
     public async Task<IActionResult> GetSubjects(Guid instructorId)
     {
         var role = User.FindFirst("role")?.Value;
-        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (role != "Admin" && userId != instructorId.ToString())
             return Unauthorized();
 
@@ -121,7 +121,7 @@ public class InstructorsController : ControllerBase
     public async Task<IActionResult> GetSubject(Guid instructorId, Guid subjectId)
     {
         var role = User.FindFirst("role")?.Value;
-        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (role != "Admin" && userId != instructorId.ToString())
             return Unauthorized();
 

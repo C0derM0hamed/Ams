@@ -1,85 +1,117 @@
-﻿namespace AmsApi.Services
+﻿using AmsApi.DTOs;
+using AmsApi.Interfaces;
+using AmsApi.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace AmsApi.Services
 {
     public class SubjectService : ISubjectService
     {
         private readonly AmsDbContext _context;
-        public SubjectService(AmsDbContext context) => _context = context;
 
-        public async Task<List<Subject>> GetAllAsync()
-            => await _context.Subjects
+        public SubjectService(AmsDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<List<SubjectListDto>> GetAllAsync()
+        {
+            return await _context.Subjects
                 .Include(s => s.Instructor)
-                .Include(s => s.AttendeeSubjects).ThenInclude(x => x.Attendee)
+                .Select(s => new SubjectListDto
+                {
+                    Id = s.Id,
+                    Name = s.Name
+                })
                 .ToListAsync();
+        }
 
-        public async Task<Subject?> GetByIdAsync(Guid id)
-            => await _context.Subjects
+        public async Task<SubjectDetailsDto?> GetByIdAsync(Guid id)
+        {
+            return await _context.Subjects
                 .Include(s => s.Instructor)
-                .Include(s => s.AttendeeSubjects).ThenInclude(x => x.Attendee)
-                .FirstOrDefaultAsync(s => s.Id == id);
+                .Where(s => s.Id == id)
+                .Select(s => new SubjectDetailsDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Instructor = s.Instructor != null ? s.Instructor.FullName : null,
+                    InstructorId = s.InstructorId,
+                    CreatedAt = s.CreateAt.Date
+                })
+                .FirstOrDefaultAsync();
+        }
 
         public async Task<Subject> CreateAsync(CreateSubjectDto dto)
         {
-            var s = new Subject
+            var subject = new Subject
             {
                 Name = dto.Name,
             };
-            _context.Subjects.Add(s);
+            _context.Subjects.Add(subject);
             await _context.SaveChangesAsync();
-            return s;
+            return subject;
         }
 
         public async Task<Subject?> UpdateAsync(Guid id, UpdateSubjectDto dto)
         {
-            var s = await _context.Subjects.FindAsync(id);
-            if (s == null) return null;
+            var subject = await _context.Subjects.FindAsync(id);
+            if (subject == null) return null;
 
             if (!string.IsNullOrWhiteSpace(dto.Name))
-                s.Name = dto.Name;
-
+                subject.Name = dto.Name;
             if (dto.InstructorId.HasValue)
-                s.InstructorId = dto.InstructorId; // can be null to unassign
+                subject.InstructorId = dto.InstructorId;
 
             await _context.SaveChangesAsync();
-            return s;
+            return subject;
         }
 
         public async Task<bool> DeleteAsync(Guid id)
         {
-            var s = await _context.Subjects.FindAsync(id);
-            if (s == null) return false;
-            _context.Subjects.Remove(s);
+            var subject = await _context.Subjects.FindAsync(id);
+            if (subject == null) return false;
+
+            _context.Subjects.Remove(subject);
             await _context.SaveChangesAsync();
             return true;
         }
 
         public async Task<List<Attendee>> GetAttendeesAsync(Guid subjectId)
         {
-            return await _context.AttendeeSubjects
-                .Where(x => x.SubjectId == subjectId)
-                .Select(x => x.Attendee)
+            var attendees = await _context.AttendeeSubjects
+                .Where(asb => asb.SubjectId == subjectId)
+                .Select(asb => asb.Attendee)
                 .ToListAsync();
+
+            return attendees;
         }
 
         public async Task<SubjectDate> AddSubjectDateAsync(Guid subjectId, CreateSubjectDateDto dto)
         {
-            var sd = new SubjectDate
+            var subjectDate = new SubjectDate
             {
                 SubjectId = subjectId,
                 DayOfWeek = dto.DayOfWeek,
                 StartTime = dto.StartTime,
-                EndTime = dto.EndTime
+                EndTime = dto.EndTime,
+                CreateAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
             };
-            _context.SubjectDates.Add(sd);
+
+            _context.SubjectDates.Add(subjectDate);
             await _context.SaveChangesAsync();
-            return sd;
+            return subjectDate;
         }
 
         public async Task<bool> RemoveSubjectDateAsync(Guid subjectId, Guid subjectDateId)
         {
-            var sd = await _context.SubjectDates
-                .FirstOrDefaultAsync(x => x.Id == subjectDateId && x.SubjectId == subjectId);
-            if (sd == null) return false;
-            _context.SubjectDates.Remove(sd);
+            var subjectDate = await _context.SubjectDates
+                .FirstOrDefaultAsync(sd => sd.SubjectId == subjectId && sd.Id == subjectDateId);
+
+            if (subjectDate == null) return false;
+
+            _context.SubjectDates.Remove(subjectDate);
             await _context.SaveChangesAsync();
             return true;
         }

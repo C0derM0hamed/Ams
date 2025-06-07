@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using AmsApi.DTOs;
 using AmsApi.Helpers;
@@ -32,7 +33,7 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> GetAllForSubject(Guid subjectId)
         {
             var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var subject = await _subjectService.GetByIdAsync(subjectId);
             if (role != "Admin" && subject.InstructorId?.ToString() != userId)
@@ -48,7 +49,7 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> CreateOne(Guid subjectId, Guid attendeeId)
         {
             var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var subject = await _subjectService.GetByIdAsync(subjectId);
             if (role != "Admin" && subject.InstructorId?.ToString() != userId)
@@ -64,7 +65,7 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> CreateMany(Guid subjectId, [FromBody] CreateAttendancesDto dto)
         {
             var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var subject = await _subjectService.GetByIdAsync(subjectId);
             if (role != "Admin" && subject.InstructorId?.ToString() != userId)
@@ -80,7 +81,7 @@ namespace AmsApi.Controllers
         public async Task<IActionResult> DeleteOne(Guid attendanceId)
         {
             var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var attendance = await _attendanceService.GetByIdAsync(attendanceId);
             if (attendance == null)

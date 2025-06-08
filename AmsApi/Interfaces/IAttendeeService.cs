@@ -13,5 +13,6 @@
         Task<List<SubjectSimpleDto>> GetSubjectsForAttendeeAsync(Guid attendeeId);
         Task<Attendee> GetByEmailAsync(string email);
         Task<bool> RemoveSubjectFromAttendee(Guid attendee_id, Guid subject_id);
+        Task<int> DeleteAllAsync();
     }
 }

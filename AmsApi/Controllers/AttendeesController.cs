@@ -195,5 +195,13 @@ public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormF
 
             return Ok(result);
         }
+        [HttpDelete("all-attendees")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteAllAttendees()
+        {
+            var deletedCount = await _attendeeService.DeleteAllAsync();
+            return Ok(new { message = $"Deleted {deletedCount} attendees successfully." });
+        }
+
     }
 }

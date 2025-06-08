@@ -4,13 +4,11 @@ using static System.Net.WebRequestMethods;
 public class AttendeeService : IAttendeeService
 {
     private readonly AmsDbContext _context;
-    private readonly string _assetsPath;
     private readonly IHttpContextAccessor _http;
 
-    public AttendeeService(AmsDbContext context,IConfiguration config, IHttpContextAccessor http)
+    public AttendeeService(AmsDbContext context,IHttpContextAccessor http)
     {
         _context = context;
-        _assetsPath = config["AssetsPath"] ?? "wwwroot/assets"; // fallback default
         _http = http;
     }
 
@@ -209,5 +207,16 @@ public class AttendeeService : IAttendeeService
         return true;
     }
 
+    public async Task<int> DeleteAllAsync()
+    {
+        var allAttendees = await _context.Attendees.ToListAsync();
 
+        if (!allAttendees.Any())
+            return 0;
+
+        _context.Attendees.RemoveRange(allAttendees);
+        await _context.SaveChangesAsync();
+
+        return allAttendees.Count;
+    }
 }

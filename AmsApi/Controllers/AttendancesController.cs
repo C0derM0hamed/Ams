@@ -118,5 +118,30 @@ namespace AmsApi.Controllers
             return Ok(dates);
         }
 
+        [HttpPost("face-checkin")]
+        [Authorize(Roles = "Admin,Instructor")]
+        public async Task<IActionResult> CheckInByFace([FromForm] IFormFile image, [FromQuery] Guid subjectId)
+        {
+            try
+            {
+                var attendance = await _attendanceService.CreateByFaceAsync(image, subjectId);
+                return Ok(attendance);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Unexpected error", error = ex.Message });
+            }
+        }
+
+
     }
+
 }

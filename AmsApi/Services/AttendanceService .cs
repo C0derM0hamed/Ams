@@ -13,10 +13,12 @@ namespace AmsApi.Services
     public class AttendanceService : IAttendanceService
     {
         private readonly AmsDbContext _context;
+        private readonly FaceRecognitionService _faceRecognitionService;
 
-        public AttendanceService(AmsDbContext context)
+        public AttendanceService(AmsDbContext context, FaceRecognitionService faceRecognitionService)
         {
             _context = context;
+            _faceRecognitionService = faceRecognitionService;
         }
 
         public async Task<List<Attendance>> GetBySubjectAsync(Guid subjectId)
@@ -204,6 +206,24 @@ namespace AmsApi.Services
                     EndTime = sd.EndTime
                 })
                 .ToListAsync();
+        }
+
+        public async Task<AttendanceDto> CreateByFaceAsync(IFormFile image, Guid subjectId)
+        {
+            using var stream = image.OpenReadStream();
+            var resultJson = await _faceRecognitionService.ClassifyAsync(stream, image.FileName);
+
+            var result = System.Text.Json.JsonDocument.Parse(resultJson);
+            var uuid = result.RootElement.GetProperty("uuid").GetString();
+
+            if (string.IsNullOrWhiteSpace(uuid) || !long.TryParse(uuid, out long studentNumber))
+                throw new InvalidOperationException("Invalid face recognition result");
+
+            var attendee = await _context.Attendees.FirstOrDefaultAsync(a => a.Number == studentNumber);
+            if (attendee == null)
+                throw new KeyNotFoundException($"No attendee found with number {studentNumber}");
+
+            return await CreateOneAsync(subjectId, attendee.Id);
         }
 
 

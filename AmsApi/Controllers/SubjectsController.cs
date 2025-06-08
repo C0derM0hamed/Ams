@@ -87,5 +87,13 @@ namespace AmsApi.Controllers
             if (!ok) return NotFound();
             return NoContent();
         }
+        [HttpDelete("all-subjects")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteAllSubjects()
+        {
+            var deletedCount = await SubjectService.DeleteAllAsync();
+            return Ok(new { message = $"Deleted {deletedCount} subjects successfully." });
+        }
+
     }
 }

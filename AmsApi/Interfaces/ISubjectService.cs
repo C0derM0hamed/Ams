@@ -11,5 +11,6 @@
         Task<List<AttendeeWithImageDto>> GetAttendeesAsync(Guid subjectId);
         Task<SubjectDate> AddSubjectDateAsync(Guid subjectId, CreateSubjectDateDto dto);
         Task<bool> RemoveSubjectDateAsync(Guid subjectId, Guid subjectDateId);
+        Task<int> DeleteAllAsync();
     }
 }

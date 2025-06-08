@@ -10,12 +10,10 @@ namespace AmsApi.Controllers;
 public class FaceCheckInController : ControllerBase
 {
     private readonly FaceRecognitionService _faceService;
-    private readonly AmsDbContext _context;
 
-    public FaceCheckInController(FaceRecognitionService faceService, AmsDbContext context)
+    public FaceCheckInController(FaceRecognitionService faceService)
     {
         _faceService = faceService;
-        _context = context;
     }
     [HttpPost("detect-face")]
     public async Task<IActionResult> DetectFace(IFormFile image, [FromServices] FaceRecognitionService service)

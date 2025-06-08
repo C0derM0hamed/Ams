@@ -129,5 +129,16 @@ namespace AmsApi.Services
             await _context.SaveChangesAsync();
             return true;
         }
+        public async Task<int> DeleteAllAsync()
+        {
+            var allSubjects = await _context.Subjects.ToListAsync();
+            if (!allSubjects.Any())
+                return 0;
+
+            _context.Subjects.RemoveRange(allSubjects);
+            await _context.SaveChangesAsync();
+            return allSubjects.Count;
+        }
+
     }
 }

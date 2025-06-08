@@ -2,16 +2,18 @@
 using AmsApi.Interfaces;
 using AmsApi.Models;
 using Microsoft.EntityFrameworkCore;
+using static System.Net.WebRequestMethods;
 
 namespace AmsApi.Services
 {
     public class SubjectService : ISubjectService
     {
         private readonly AmsDbContext _context;
-
-        public SubjectService(AmsDbContext context)
+        private readonly IHttpContextAccessor _http;
+        public SubjectService(AmsDbContext context, IHttpContextAccessor http)
         {
             _context = context;
+            _http = http;
         }
 
         public async Task<List<SubjectListDto>> GetAllAsync()
@@ -28,18 +30,25 @@ namespace AmsApi.Services
 
         public async Task<SubjectDetailsDto?> GetByIdAsync(Guid id)
         {
-            return await _context.Subjects
-                .Include(s => s.Instructor)
-                .Where(s => s.Id == id)
-                .Select(s => new SubjectDetailsDto
-                {
-                    Id = s.Id,
-                    Name = s.Name,
-                    Instructor = s.Instructor != null ? s.Instructor.FullName : null,
-                    InstructorId = s.InstructorId,
-                    CreatedAt = s.CreateAt.Date
-                })
-                .FirstOrDefaultAsync();
+                return await _context.Subjects
+                 .Include(s => s.Instructor)
+                 .Include(s => s.SubjectDates)
+                 .Where(s => s.Id == id)
+                 .Select(s => new SubjectDetailsDto
+                 {
+                     Id = s.Id,
+                     Name = s.Name,
+                     Instructor = s.Instructor != null ? s.Instructor.FullName : null,
+                     InstructorId = s.InstructorId,
+                     CreatedAt = s.CreateAt.Date,
+                     SubjectDates = s.SubjectDates.Select(sd => new SubjectDateDto
+                     {
+                         DayOfWeek = sd.DayOfWeek,
+                         StartTime = sd.StartTime,
+                         EndTime = sd.EndTime
+                     }).ToList()
+                 })
+                 .FirstOrDefaultAsync();
         }
 
         public async Task<Subject> CreateAsync(CreateSubjectDto dto)
@@ -77,14 +86,19 @@ namespace AmsApi.Services
             return true;
         }
 
-        public async Task<List<Attendee>> GetAttendeesAsync(Guid subjectId)
+        public async Task<List<AttendeeWithImageDto>> GetAttendeesAsync(Guid subjectId)
         {
-            var attendees = await _context.AttendeeSubjects
-                .Where(asb => asb.SubjectId == subjectId)
-                .Select(asb => asb.Attendee)
-                .ToListAsync();
-
-            return attendees;
+            return await _context.AttendeeSubjects
+               .Where(asb => asb.SubjectId == subjectId)
+               .Select(asb => new AttendeeWithImageDto
+               {
+                   Id = asb.Attendee.Id,
+                   FullName = asb.Attendee.FullName,
+                   ImagePath = string.IsNullOrEmpty(asb.Attendee.ImagePath) ? null
+                   : $"{_http.HttpContext.Request.Scheme}://{_http.HttpContext.Request.Host}{asb.Attendee.ImagePath}",
+                   CreatedAt = asb.Attendee.CreatedAt
+               })
+               .ToListAsync();
         }
 
         public async Task<SubjectDate> AddSubjectDateAsync(Guid subjectId, CreateSubjectDateDto dto)

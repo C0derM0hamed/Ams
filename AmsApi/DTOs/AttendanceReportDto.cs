@@ -2,9 +2,9 @@
 {
     public class AttendanceReportDto
     {
-        public string Subject { get; set; } = string.Empty;
-        public DateTime Date { get; set; }
-        public List<string> Present { get; set; } = new();
-        public List<string> Absent { get; set; } = new();
+        public string SubjectName { get; set; }
+        public string InstructorName { get; set; }
+        public DateTime ReportDate { get; set; }
+        public List<AttendeeReportDto> Attendees { get; set; } = new();
     }
 }

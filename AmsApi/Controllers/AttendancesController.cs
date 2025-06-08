@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using AmsApi.DTOs;
 using AmsApi.Helpers;
 using AmsApi.Interfaces;
+using Azure.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,7 +14,7 @@ namespace AmsApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    [Authorize] // حماية كل الأكشنات
+    [Authorize] 
     public class AttendancesController : ControllerBase
     {
         private readonly IAttendanceService _attendanceService;
@@ -27,72 +28,95 @@ namespace AmsApi.Controllers
             _subjectService = subjectService;
         }
 
-        // GET /api/attendances/subjects/{subjectId}
+        // GET /attendances/subjects/{subjectId}
         [HttpGet("subjects/{subjectId}")]
         [Authorize(Roles = "Admin,Instructor")]
         public async Task<IActionResult> GetAllForSubject(Guid subjectId)
         {
-            var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
             var subject = await _subjectService.GetByIdAsync(subjectId);
-            if (role != "Admin" && subject.InstructorId?.ToString() != userId)
-                return Unauthorized();
 
             var list = await _attendanceService.GetBySubjectAsync(subjectId);
             return Ok(list);
         }
 
-        // PUT /api/attendances/subjects/{subjectId}/attendees/{attendeeId}
+        // PUT /attendances/subjects/{subjectId}/attendees/{attendeeId}
         [HttpPut("subjects/{subjectId}/attendees/{attendeeId}")]
         [Authorize(Roles = "Admin,Instructor")]
         public async Task<IActionResult> CreateOne(Guid subjectId, Guid attendeeId)
         {
-            var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            var subject = await _subjectService.GetByIdAsync(subjectId);
-            if (role != "Admin" && subject.InstructorId?.ToString() != userId)
-                return Unauthorized();
-
-            var attendance = await _attendanceService.CreateOneAsync(subjectId, attendeeId);
-            return Ok(attendance);
+            try
+            {
+                var subject = await _subjectService.GetByIdAsync(subjectId);
+                if (subject is null)
+                    return BadRequest("subject Not found");
+                var attendance = await _attendanceService.CreateOneAsync(subjectId, attendeeId);
+                return Ok(attendance);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
-        // POST /api/attendances/subjects/{subjectId}
-        [HttpPost("subjects/{subjectId}")]
-        [Authorize(Roles = "Admin,Instructor")]
-        public async Task<IActionResult> CreateMany(Guid subjectId, [FromBody] CreateAttendancesDto dto)
+        // POST /attendances/subjects/{subjectId}
+        [HttpPost("subjects/{subjectId}/attendees")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateMany(Guid subjectId, [FromBody] List<Guid> attendeeIds)
         {
-            var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var dto = new CreateManyAttendanceDto
+            {
+                SubjectId = subjectId,
+                AttendeeIds = attendeeIds
+            };
 
-            var subject = await _subjectService.GetByIdAsync(subjectId);
-            if (role != "Admin" && subject.InstructorId?.ToString() != userId)
-                return Unauthorized();
-
-            var attendances = await _attendanceService.CreateManyAsync(subjectId, dto.AttendeeIds);
-            return Ok(attendances);
+            var result = await _attendanceService.CreateManyAsync(dto);
+            return Ok(result);
         }
 
-        // DELETE /api/attendances/{attendanceId}
+        // DELETE /attendances/{attendanceId}
         [HttpDelete("{attendanceId}")]
         [Authorize(Roles = "Admin,Instructor")]
         public async Task<IActionResult> DeleteOne(Guid attendanceId)
         {
-            var role = User.FindFirst("role")?.Value;
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
             var attendance = await _attendanceService.GetByIdAsync(attendanceId);
             if (attendance == null)
                 return NotFound();
-
-            if (role != "Admin" && attendance.Subject.InstructorId?.ToString() != userId)
-                return Unauthorized();
 
             var ok = await _attendanceService.DeleteAsync(attendanceId);
             if (!ok) return NotFound();
             return NoContent();
         }
+        [HttpDelete("all")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteAll()
+        {
+            await _attendanceService.DeleteAllAsync();
+            return NoContent(); // 204: successful with no body
+        }
+
+        [HttpDelete("subjects/{subjectId}/all")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteAllForSubject(Guid subjectId)
+        {
+            await _attendanceService.DeleteAllForSubjectAsync(subjectId);
+            return NoContent(); // 204
+        }
+
+        [HttpGet("report/{subjectId}")]
+        [Authorize(Roles = "Admin,Instructor")]
+        public async Task<IActionResult> GetAttendanceReport(Guid subjectId)
+        {
+            var report = await _attendanceService.GenerateReportAsync(subjectId);
+            return Ok(report);
+        }
+
+        [HttpGet("calendar")]
+        [Authorize(Roles = "Admin,Instructor,Attendee")]
+        public async Task<IActionResult> GetCalendar()
+        {
+            var dates = await _attendanceService.GetCalendarDatesAsync();
+            return Ok(dates);
+        }
+
     }
 }

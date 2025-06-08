@@ -13,7 +13,7 @@ namespace AmsApi.Data
         public DbSet<SubjectDate> SubjectDates { get; set; }
         public DbSet<Attendance> Attendances { get; set; }
         public DbSet<AttendeeSubject> AttendeeSubjects { get; set; }  // DbSet for Many-to-Many Relationship
-
+        public DbSet<Setting> Settings { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

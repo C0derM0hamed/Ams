@@ -7,5 +7,6 @@
         public string Instructor { get; set; } = string.Empty;
         public Guid? InstructorId { get; set; }
         public DateTime CreatedAt { get; set; }
+        public List<SubjectDateDto> SubjectDates { get; set; } = new();
     }
 }

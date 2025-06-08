@@ -1,7 +1,9 @@
 ﻿public class AttendanceDto
 {
-    public int SubjectId { get; set; }
-    public int AttendeeId { get; set; }
-    public DateTime Date { get; set; }
-    public bool IsPresent { get; set; }
+    public Guid Id { get; set; }
+    public Guid AttendeeId { get; set; }
+    public string AttendeeName { get; set; } = string.Empty;
+    public Guid SubjectId { get; set; }
+    public string SubjectName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
 }

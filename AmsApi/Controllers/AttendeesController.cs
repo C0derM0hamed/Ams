@@ -13,44 +13,18 @@ namespace AmsApi.Controllers
     public class AttendeesController : ControllerBase
     {
         private readonly IAttendeeService _attendeeService;
-        private readonly IFaceRecognizer _faceRecognizer;
         private readonly IJwtHelper _jwtHelper;
-        private readonly string _pythonUrl;
+        private readonly ISettingsService _settingsService;
 
         public AttendeesController(
             IAttendeeService attendeeService,
-            IFaceRecognizer faceRecognizer,
-            IJwtHelper jwtHelper,IConfiguration config)
+            IJwtHelper jwtHelper,IConfiguration config,
+            ISettingsService settingsService)
         {
             _attendeeService = attendeeService;
-            _faceRecognizer = faceRecognizer;
+            
             _jwtHelper = jwtHelper;
-            _pythonUrl = config["PythonFaceRec:BaseUrl"]!;
-        }
-
-        public enum FaceRecognitionMode
-        {
-            Embed,
-            Classify
-        }
-
-        [HttpGet("test-auth")]
-        [Authorize(Roles = "Admin")]
-        public IActionResult TestAuth()
-        {
-            return Ok(User.Claims.Select(c => new { c.Type, c.Value }));
-        }
-
-        [AllowAnonymous]
-        [HttpPost("login")]
-        public async Task<IActionResult> LoginWithCredentials([FromBody] LoginDto payload)
-        {
-            var attendee = await _attendeeService.GetByEmailAsync(payload.Username);
-            if (attendee == null || attendee.Password != payload.Password)
-                return Unauthorized(new { message = "Invalid credentials" });
-
-            var token = _jwtHelper.GenerateToken(attendee.Id, "Attendee");
-            return Ok(new { token });
+            _settingsService = settingsService;
         }
 
         [HttpGet]
@@ -213,8 +187,8 @@ public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormF
             using var client = new HttpClient();
             using var content = new MultipartFormDataContent();
             content.Add(new ByteArrayContent(await System.IO.File.ReadAllBytesAsync(zipPath)), "file", $"{studentNumber}_training.zip");
-
-            var response = await client.PostAsync($"{_pythonUrl}/upload_training_images", content);
+            var baseUrl = await _settingsService.GetValueAsync("PythonFaceRec.BaseUrl");
+            var response = await client.PostAsync($"{baseUrl}/upload_training_images", content);
             var result = await response.Content.ReadAsStringAsync();
 
             System.IO.File.Delete(zipPath);

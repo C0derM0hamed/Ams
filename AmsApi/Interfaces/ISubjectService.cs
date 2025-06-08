@@ -8,7 +8,7 @@
         Task<Subject?> UpdateAsync(Guid id, UpdateSubjectDto dto);
         Task<bool> DeleteAsync(Guid id);
 
-        Task<List<Attendee>> GetAttendeesAsync(Guid subjectId);
+        Task<List<AttendeeWithImageDto>> GetAttendeesAsync(Guid subjectId);
         Task<SubjectDate> AddSubjectDateAsync(Guid subjectId, CreateSubjectDateDto dto);
         Task<bool> RemoveSubjectDateAsync(Guid subjectId, Guid subjectDateId);
     }

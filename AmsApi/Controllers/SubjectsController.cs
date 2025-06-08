@@ -61,7 +61,7 @@ namespace AmsApi.Controllers
         }
 
         // GET /subjects/{subjectId}/attendees (Admin و Instructor فقط)
-        [HttpGet("{subjectId:guid}/attendees")]
+        [HttpGet("{subjectId}/attendees")]
         [Authorize(Roles = "Admin,Instructor")]
         public async Task<IActionResult> GetAttendees(Guid subjectId)
         {

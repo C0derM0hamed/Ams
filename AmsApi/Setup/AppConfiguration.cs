@@ -52,30 +52,21 @@ public static class AppConfiguration
             };
         });
 
-        // ✅ الخدمات
-        services.AddSingleton<FaceRecModeService>();
 
-        var pyBase = config["PythonFaceRec:BaseUrl"]!;
-        services.AddHttpClient<IPythonClassifierClient, PythonClassifierClient>(client =>
-        {
-            client.BaseAddress = new Uri(pyBase);
-        });
 
         services.AddScoped<IAttendeeService, AttendeeService>();
         services.AddScoped<ISubjectService, SubjectService>();
         services.AddScoped<IInstructorService, InstructorService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
-        services.AddScoped<IConfigService, ConfigService>();
         services.AddScoped<IUserService, UserService>();
-        services.AddScoped<FaceDatasetUploaderService>();
         services.AddHttpClient();
         services.AddHttpClient<FaceRecognitionService>();
         services.AddScoped<IJwtHelper, JwtHelper>();
 
         services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
         services.AddHttpContextAccessor();
-        services.AddScoped<IFaceRecognizer, Services.FaceRecognizer>();
-       
+        services.AddScoped<ISettingsService, SettingsService>();
+
         services.AddIdentityCore<AppUser>(options => { })
         .AddRoles<IdentityRole>()
         .AddEntityFrameworkStores<AmsDbContext>()

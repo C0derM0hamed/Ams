@@ -1,6 +1,6 @@
 ﻿namespace AmsApi.DTOs
 {
-    public class CreateSubjectDateDto
+    public class SubjectDateDto
     {
         public int DayOfWeek { get; set; }
         public TimeSpan StartTime { get; set; }

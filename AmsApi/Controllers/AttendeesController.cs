@@ -150,6 +150,7 @@ public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormF
 
         [HttpPost("{attendee_id}/upload_images_for_training")]
         [Authorize(Roles = "Admin")]
+        
         public async Task<IActionResult> UploadImagesForTraining(Guid attendee_id, [FromForm] List<IFormFile> files)
         {
             var attendee = await _attendeeService.GetByIdAsync(attendee_id);

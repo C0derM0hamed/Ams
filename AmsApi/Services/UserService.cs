@@ -16,7 +16,7 @@ namespace AmsApi.Services
             _jwtHelper = jwtHelper;
         }
 
-        public async Task<string> RegisterUserAsync(CreateUserDto dto)
+        public async Task<RegisterResponse> RegisterUserAsync(CreateUserDto dto)
         {
             // تأكد إن الرول موجود
             if (!await _roleManager.RoleExistsAsync(dto.Role))
@@ -25,7 +25,7 @@ namespace AmsApi.Services
             // إنشاء المستخدم
             var user = new AppUser
             {
-                FullName=dto.FullName,
+                FullName = dto.FullName,
                 UserName = dto.Email,
                 Email = dto.Email
             };
@@ -37,8 +37,16 @@ namespace AmsApi.Services
             // إضافة الرول
             await _userManager.AddToRoleAsync(user, dto.Role);
 
-            return user.Id;
+            // توليد التوكن
+            var token = _jwtHelper.GenerateToken(Guid.Parse(user.Id), dto.Role);
+
+            return new RegisterResponse
+            {
+                Token = token,
+                UserId = user.Id
+            };
         }
+
         public async Task<AuthResponse> LoginAsync(LoginDto dto)
         {
             var user = await _userManager.FindByEmailAsync(dto.Username);

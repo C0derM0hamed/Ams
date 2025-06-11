@@ -2,7 +2,7 @@
 {
     public interface IUserService
     {
-        Task<string> RegisterUserAsync(CreateUserDto dto);
+        Task<RegisterResponse> RegisterUserAsync(CreateUserDto dto);
         Task<AuthResponse> LoginAsync(LoginDto dto);
     }
 }

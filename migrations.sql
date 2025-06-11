@@ -11,23 +11,7 @@ GO
 BEGIN TRANSACTION;
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
-)
-BEGIN
-    CREATE TABLE [Admins] (
-        [Id] uniqueidentifier NOT NULL,
-        [Name] nvarchar(max) NOT NULL,
-        [Email] nvarchar(max) NOT NULL,
-        [Password] nvarchar(max) NOT NULL,
-        [CreateAt] datetime2 NOT NULL,
-        [UpdatedAt] datetime2 NOT NULL,
-        CONSTRAINT [PK_Admins] PRIMARY KEY ([Id])
-    );
-END;
-
-IF NOT EXISTS (
-    SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [AspNetRoles] (
@@ -41,7 +25,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [AspNetUsers] (
@@ -67,7 +51,26 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
+)
+BEGIN
+    CREATE TABLE [Attendees] (
+        [Id] uniqueidentifier NOT NULL,
+        [Number] bigint NOT NULL,
+        [FullName] nvarchar(max) NOT NULL,
+        [Email] nvarchar(max) NOT NULL,
+        [Password] nvarchar(max) NOT NULL,
+        [ImagePath] nvarchar(max) NULL,
+        [Embedding] nvarchar(max) NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        [UpdatedAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_Attendees] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [Instructors] (
@@ -83,28 +86,20 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
-    CREATE TABLE [Attendees] (
+    CREATE TABLE [Settings] (
         [Id] uniqueidentifier NOT NULL,
-        [Number] bigint NOT NULL,
-        [FullName] nvarchar(max) NOT NULL,
-        [Email] nvarchar(max) NOT NULL,
-        [Password] nvarchar(max) NOT NULL,
-        [ImagePath] nvarchar(max) NULL,
-        [Embedding] nvarchar(max) NULL,
-        [CreatedAt] datetime2 NOT NULL,
-        [UpdatedAt] datetime2 NOT NULL,
-        [AdminId] uniqueidentifier NOT NULL,
-        CONSTRAINT [PK_Attendees] PRIMARY KEY ([Id]),
-        CONSTRAINT [FK_Attendees_Admins_AdminId] FOREIGN KEY ([AdminId]) REFERENCES [Admins] ([Id]) ON DELETE CASCADE
+        [Key] nvarchar(max) NOT NULL,
+        [Value] nvarchar(max) NOT NULL,
+        CONSTRAINT [PK_Settings] PRIMARY KEY ([Id])
     );
 END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [AspNetRoleClaims] (
@@ -119,7 +114,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [AspNetUserClaims] (
@@ -134,7 +129,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [AspNetUserLogins] (
@@ -149,7 +144,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [AspNetUserRoles] (
@@ -163,7 +158,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [AspNetUserTokens] (
@@ -178,13 +173,12 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [Subjects] (
         [Id] uniqueidentifier NOT NULL,
         [Name] nvarchar(max) NOT NULL,
-        [Description] nvarchar(max) NULL,
         [CreateAt] datetimeoffset NOT NULL,
         [UpdatedAt] datetimeoffset NOT NULL,
         [InstructorId] uniqueidentifier NULL,
@@ -195,7 +189,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [Attendances] (
@@ -211,7 +205,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [AttendeeSubjects] (
@@ -225,7 +219,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE TABLE [SubjectDates] (
@@ -243,21 +237,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
-)
-BEGIN
-    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreateAt', N'Email', N'Name', N'Password', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Admins]'))
-        SET IDENTITY_INSERT [Admins] ON;
-    EXEC(N'INSERT INTO [Admins] ([Id], [CreateAt], [Email], [Name], [Password], [UpdatedAt])
-    VALUES (''00000000-0000-0000-0000-000000000001'', ''2025-05-12T00:00:00.0000000Z'', N''Mohamed@gomai.com'', N''Mohamed Mostafa'', N''123456'', ''2025-05-12T00:00:00.0000000Z''),
-    (''11111111-1111-1111-1111-111111111111'', ''2025-05-12T00:00:00.0000000Z'', N''Osman@gmail.com'', N''Mohamed Osman'', N''12345'', ''2025-05-12T00:00:00.0000000Z'')');
-    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N'Id', N'CreateAt', N'Email', N'Name', N'Password', N'UpdatedAt') AND [object_id] = OBJECT_ID(N'[Admins]'))
-        SET IDENTITY_INSERT [Admins] OFF;
-END;
-
-IF NOT EXISTS (
-    SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [IX_AspNetRoleClaims_RoleId] ON [AspNetRoleClaims] ([RoleId]);
@@ -265,7 +245,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     EXEC(N'CREATE UNIQUE INDEX [RoleNameIndex] ON [AspNetRoles] ([NormalizedName]) WHERE [NormalizedName] IS NOT NULL');
@@ -273,7 +253,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [IX_AspNetUserClaims_UserId] ON [AspNetUserClaims] ([UserId]);
@@ -281,7 +261,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [IX_AspNetUserLogins_UserId] ON [AspNetUserLogins] ([UserId]);
@@ -289,7 +269,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [IX_AspNetUserRoles_RoleId] ON [AspNetUserRoles] ([RoleId]);
@@ -297,7 +277,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [EmailIndex] ON [AspNetUsers] ([NormalizedEmail]);
@@ -305,7 +285,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     EXEC(N'CREATE UNIQUE INDEX [UserNameIndex] ON [AspNetUsers] ([NormalizedUserName]) WHERE [NormalizedUserName] IS NOT NULL');
@@ -313,7 +293,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [IX_Attendances_AttendeeId] ON [Attendances] ([AttendeeId]);
@@ -321,7 +301,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [IX_Attendances_SubjectId] ON [Attendances] ([SubjectId]);
@@ -329,15 +309,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
-)
-BEGIN
-    CREATE INDEX [IX_Attendees_AdminId] ON [Attendees] ([AdminId]);
-END;
-
-IF NOT EXISTS (
-    SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [IX_AttendeeSubjects_SubjectId] ON [AttendeeSubjects] ([SubjectId]);
@@ -345,7 +317,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [IX_SubjectDates_SubjectId] ON [SubjectDates] ([SubjectId]);
@@ -353,7 +325,7 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     CREATE INDEX [IX_Subjects_InstructorId] ON [Subjects] ([InstructorId]);
@@ -361,11 +333,11 @@ END;
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20250518201531_int'
+    WHERE [MigrationId] = N'20250608214826_RemoteOne'
 )
 BEGIN
     INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
-    VALUES (N'20250518201531_int', N'9.0.4');
+    VALUES (N'20250608214826_RemoteOne', N'9.0.4');
 END;
 
 COMMIT;

@@ -37,6 +37,29 @@ namespace AmsApi.Controllers
                 });
             }
         }
+        [HttpPost("auto-register/{id}")]
+        public async Task<IActionResult> AutoRegister(Guid id)
+        {
+            try
+            {
+                var result = await _userService.AutoRegisterAsync(id);
+
+                return Ok(new
+                {
+                    message = "User registered successfully",
+                    userId = result.UserId,
+                    token = result.Token
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
+
         // POST /auth/login
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)

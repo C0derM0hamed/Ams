@@ -12,5 +12,7 @@
         Task<SubjectDate> AddSubjectDateAsync(Guid subjectId, CreateSubjectDateDto dto);
         Task<bool> RemoveSubjectDateAsync(Guid subjectId, Guid subjectDateId);
         Task<int> DeleteAllAsync();
+        Task<int> DeleteAllSubjectDatesAsync();
+        Task<List<SubjectDateDto>> GetSubjectDatesAsync(Guid subjectId);
     }
 }

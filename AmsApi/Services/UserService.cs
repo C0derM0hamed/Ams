@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 
 namespace AmsApi.Services
@@ -8,12 +9,14 @@ namespace AmsApi.Services
         private readonly UserManager<AppUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IJwtHelper _jwtHelper;
+        private readonly AmsDbContext _dbContext;
 
-        public UserService(UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager, IJwtHelper jwtHelper)
+        public UserService(UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager, IJwtHelper jwtHelper, AmsDbContext dbContext)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _jwtHelper = jwtHelper;
+            _dbContext = dbContext;
         }
 
         public async Task<RegisterResponse> RegisterUserAsync(CreateUserDto dto)
@@ -60,5 +63,49 @@ namespace AmsApi.Services
 
             return new AuthResponse { Token = token };
         }
+        public async Task<RegisterResponse> AutoRegisterAsync(Guid id)
+        {
+            // الأول شوف لو ID ده لطالب
+            var attendee = await _dbContext.Attendees.FindAsync(id);
+            if (attendee != null)
+            {
+                var existingUser = await _userManager.FindByEmailAsync(attendee.Email);
+                if (existingUser != null)
+                    throw new Exception("User already registered");
+
+                var dto = new CreateUserDto
+                {
+                    FullName = attendee.FullName,
+                    Email = attendee.Email,
+                    Password = attendee.Password,
+                    Role = "Attendee"
+                };
+
+                return await RegisterUserAsync(dto);
+            }
+
+            // شوف لو ID ده لمدرّس
+            var instructor = await _dbContext.Instructors.FindAsync(id);
+            if (instructor != null)
+            {
+                var existingUser = await _userManager.FindByEmailAsync(instructor.Email);
+                if (existingUser != null)
+                    throw new Exception("User already registered");
+
+                var dto = new CreateUserDto
+                {
+                    FullName = instructor.FullName,
+                    Email = instructor.Email,
+                    Password = instructor.Password,
+                    Role = "Instructor"
+                };
+
+                return await RegisterUserAsync(dto);
+            }
+
+            throw new Exception("No Attendee or Instructor found with this ID");
+        }
+
+
     }
 }

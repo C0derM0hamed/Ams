@@ -22,7 +22,7 @@ public class InstructorsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> GetAll()
     {
         var list = await _InstructorService.GetAllAsync();
@@ -30,7 +30,7 @@ public class InstructorsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> Create([FromBody] CreateInstructorDto dto)
     {
         var inst = await _InstructorService.CreateAsync(dto);
@@ -51,7 +51,7 @@ public class InstructorsController : ControllerBase
 
 
     [HttpGet("{instructorId:guid}")]
-    [Authorize(Roles ="Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> GetOne(Guid instructorId)
     {
         var inst = await _InstructorService.GetByIdAsync(instructorId);
@@ -60,7 +60,7 @@ public class InstructorsController : ControllerBase
     }
 
     [HttpPatch("{instructorId:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> Update(Guid instructorId, [FromBody] UpdateInstructorDto dto)
     {
         var updated = await _InstructorService.UpdateAsync(instructorId, dto);
@@ -78,7 +78,7 @@ public class InstructorsController : ControllerBase
     }
 
     [HttpPost("{instructorId}/image")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> UploadImage(Guid instructorId, [FromForm] IFormFile file)
     {
         if (file == null || file.Length == 0)
@@ -107,7 +107,7 @@ public class InstructorsController : ControllerBase
     }
 
     [HttpGet("{instructorId:guid}/subjects")]
-    [Authorize(Roles ="Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> GetSubjects(Guid instructorId)
     {
         var list = await _InstructorService.GetSubjectsForInstructorAsync(instructorId);
@@ -115,7 +115,7 @@ public class InstructorsController : ControllerBase
     }
 
     [HttpGet("{instructorId}/subjects/{subjectId}")]
-    [Authorize(Roles ="Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> GetSubject(Guid instructorId, Guid subjectId)
     {
         var subj = await _InstructorService.GetSubjectForInstructorAsync(instructorId, subjectId);
@@ -124,7 +124,7 @@ public class InstructorsController : ControllerBase
     }
 
     [HttpPut("{instructorId}/subjects/{subjectId}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> AssignSubject(Guid instructorId, Guid subjectId)
     {
         var ok = await _InstructorService.AssignSubjectToInstructorAsync(instructorId, subjectId);
@@ -133,7 +133,7 @@ public class InstructorsController : ControllerBase
     }
 
     [HttpDelete("{instructorId:guid}/subjects/{subjectId:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Instructor")]
     public async Task<IActionResult> UnassignSubject(Guid instructorId, Guid subjectId)
     {
         var ok = await _InstructorService.RemoveSubjectFromInstructorAsync(instructorId, subjectId);

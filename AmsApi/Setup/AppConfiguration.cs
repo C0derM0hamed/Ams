@@ -72,7 +72,17 @@ public static class AppConfiguration
         .AddEntityFrameworkStores<AmsDbContext>()
         .AddSignInManager()
         .AddDefaultTokenProviders();
+
+        services.Configure<IdentityOptions>(options =>
+        {
+            options.Password.RequireDigit = false;
+            options.Password.RequiredLength = 4;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireLowercase = false;
+        });
     }
+   
 
     public static void UseCustomMiddleware(this WebApplication app)
     {

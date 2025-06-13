@@ -107,8 +107,8 @@ namespace AmsApi.Services
             {
                 SubjectId = subjectId,
                 DayOfWeek = dto.DayOfWeek,
-                StartTime = dto.StartTime,
-                EndTime = dto.EndTime,
+                StartTime = TimeSpan.Parse(dto.StartTime),
+                EndTime = TimeSpan.Parse(dto.EndTime),
                 CreateAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             };
@@ -117,6 +117,20 @@ namespace AmsApi.Services
             await _context.SaveChangesAsync();
             return subjectDate;
         }
+        public async Task<List<SubjectDateDto>> GetSubjectDatesAsync(Guid subjectId)
+        {
+            return await _context.SubjectDates
+                .Where(sd => sd.SubjectId == subjectId)
+                .OrderBy(sd => sd.DayOfWeek)
+                .Select(sd => new SubjectDateDto
+                {
+                    DayOfWeek = sd.DayOfWeek,
+                    StartTime = sd.StartTime,
+                    EndTime = sd.EndTime
+                })
+                .ToListAsync();
+        }
+
 
         public async Task<bool> RemoveSubjectDateAsync(Guid subjectId, Guid subjectDateId)
         {
@@ -138,6 +152,16 @@ namespace AmsApi.Services
             _context.Subjects.RemoveRange(allSubjects);
             await _context.SaveChangesAsync();
             return allSubjects.Count;
+        }
+        public async Task<int> DeleteAllSubjectDatesAsync()
+        {
+            var allDates = await _context.SubjectDates.ToListAsync();
+            if (!allDates.Any())
+                return 0;
+
+            _context.SubjectDates.RemoveRange(allDates);
+            await _context.SaveChangesAsync();
+            return allDates.Count;
         }
 
     }

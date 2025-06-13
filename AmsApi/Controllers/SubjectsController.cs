@@ -77,6 +77,12 @@ namespace AmsApi.Controllers
             var sd = await SubjectService.AddSubjectDateAsync(subjectId, dto);
             return CreatedAtAction(null, new { subjectId = subjectId, subjectDateId = sd.Id }, sd);
         }
+        [HttpGet("{subjectId:guid}/subject_dates")]
+        public async Task<IActionResult> GetSubjectDates(Guid subjectId)
+        {
+            var dates = await SubjectService.GetSubjectDatesAsync(subjectId);
+            return Ok(dates);
+        }
 
         // DELETE /subjects/{subjectId}/subject_dates/{subjectDateId} (Admin فقط)
         [HttpDelete("{subjectId:guid}/subject_dates/{subjectDateId:guid}")]
@@ -94,6 +100,16 @@ namespace AmsApi.Controllers
             var deletedCount = await SubjectService.DeleteAllAsync();
             return Ok(new { message = $"Deleted {deletedCount} subjects successfully." });
         }
+        [HttpDelete("subject-dates")]
+        public async Task<IActionResult> DeleteAllSubjectDates()
+        {
+            var count = await SubjectService.DeleteAllSubjectDatesAsync();
+            return Ok(new
+            {
+                message = $"Deleted {count} subject date(s)"
+            });
+        }
+
 
     }
 }

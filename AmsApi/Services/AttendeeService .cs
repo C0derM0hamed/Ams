@@ -108,20 +108,26 @@ public class AttendeeService : IAttendeeService
                              .FirstOrDefaultAsync(a => a.Email == email);
     }
 
-    private async Task<string> SaveImage(Guid attendeeId, byte[] image)
+    public async Task<string> UploadImageAsync(Guid attendeeId, byte[] imageBytes)
     {
-        var attendeeDir = Path.Combine("wwwroot", "uploads", attendeeId.ToString());
+        var relativePath = Path.Combine("uploads", attendeeId.ToString());
+        var dir = Path.Combine("wwwroot", relativePath);
 
-        if (!Directory.Exists(attendeeDir))
-            Directory.CreateDirectory(attendeeDir);
+        Directory.CreateDirectory(dir);
 
         var fileName = "profile.png";
-        var fullPath = Path.Combine(attendeeDir, fileName);
+        var fullPath = Path.Combine(dir, fileName);
 
-        await System.IO.File.WriteAllBytesAsync(fullPath, image);
+        await System.IO.File.WriteAllBytesAsync(fullPath, imageBytes);
 
-        //  يرجع المسار النسبي للعرض في الفرونت
-        return $"/uploads/{attendeeId}/profile.png";
+        var attendee = await _context.Attendees.FindAsync(attendeeId);
+        if (attendee == null)
+            throw new Exception("Attendee not found");
+
+        attendee.ImagePath = $"/{relativePath.Replace("\\", "/")}/{fileName}";
+        await _context.SaveChangesAsync();
+
+        return attendee.ImagePath;
     }
     public async Task<bool> AddSubjectToAttendee(Guid attendeeId, Guid subjectId)
     {
@@ -169,17 +175,7 @@ public class AttendeeService : IAttendeeService
             .ToListAsync();
     }
 
-    public async Task UploadImageAsync(Guid attendeeId, byte[] imageBytes)
-    {
-        var attendee = await _context.Attendees.FindAsync(attendeeId);
-        if (attendee == null)
-            throw new Exception("Attendee not found");
 
-        var imagePath = await SaveImage(attendee.Id, imageBytes);
-        attendee.ImagePath = imagePath;
-
-        await _context.SaveChangesAsync();
-    }
     // تنفيذ إزالة الموضوع من المتدرب
     public async Task<bool> RemoveSubjectFromAttendee(Guid attendee_id, Guid subject_id)
     {
@@ -218,5 +214,18 @@ public class AttendeeService : IAttendeeService
         await _context.SaveChangesAsync();
 
         return allAttendees.Count;
+    }
+    public async Task<List<CalendarSubjectDateDto>> GetCalendarDatesAsync()
+    {
+        return await _context.SubjectDates
+            .Include(sd => sd.Subject)
+            .Select(sd => new CalendarSubjectDateDto
+            {
+                SubjectName = sd.Subject.Name,
+                DayOfWeek = sd.DayOfWeek,
+                StartTime = sd.StartTime,
+                EndTime = sd.EndTime
+            })
+            .ToListAsync();
     }
 }

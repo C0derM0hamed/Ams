@@ -32,6 +32,7 @@ public class InstructorService : IInstructorService
             {
                 Id = i.Id,
                 FullName = i.FullName,
+                Email=i.Email,
                  ImagePath = string.IsNullOrEmpty(i.ImagePath)
                 ? null
                 : $"{_http.HttpContext.Request.Scheme}://{_http.HttpContext.Request.Host}{i.ImagePath}"
@@ -67,6 +68,7 @@ public class InstructorService : IInstructorService
     {
         var instructor = new Instructor
         {
+            Id = dto.Id,
             FullName = dto.FullName,
             Email = dto.Email,
             Password = dto.Password,
@@ -114,6 +116,7 @@ public class InstructorService : IInstructorService
             .Where(s => s.InstructorId == instructorId)
             .Select(s => new SubjectSimpleDto
             {
+                Id = s.Id,
                 Name = s.Name,
                 CreatedAt = s.CreateAt.UtcDateTime
             })
@@ -173,19 +176,4 @@ public class InstructorService : IInstructorService
         return inst.ImagePath;
     }
 
-
-    private async Task<string> SaveImage(Guid InstrutorId, byte[] image)
-    {
-        var attendeeDir = Path.Combine("wwwroot", "Instructor", InstrutorId.ToString());
-
-        if (!Directory.Exists(attendeeDir))
-            Directory.CreateDirectory(attendeeDir);
-
-        var fileName = "Instructor.png";
-        var fullPath = Path.Combine(attendeeDir, fileName);
-
-        await System.IO.File.WriteAllBytesAsync(fullPath, image);
-
-        return $"/Instructor/{InstrutorId}/{fileName}";
-    }
 }

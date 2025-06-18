@@ -4,40 +4,41 @@ using System.Linq;
 
 namespace AmsApi.Controllers
 {
-    [Route("[controller]")]
-    [ApiController]
-    public class AuthController : ControllerBase
-    {
-        private readonly IUserService _userService;
 
-        public AuthController(IUserService userService)
+        [Route("[controller]")]
+        [ApiController]
+        public class AuthController : ControllerBase
         {
-            _userService = userService;
-        }
+            private readonly IUserService _userService;
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] CreateUserDto dto)
-        {
-            try
+            public AuthController(IUserService userService)
             {
-                var result = await _userService.RegisterUserAsync(dto);
-                return Ok(new
-                {
-                    message = "User created",
-                    userId = result.UserId,
-                    token = result.Token
-                });
+                _userService = userService;
             }
-            catch (Exception ex)
+
+            [HttpPost("register")]
+            public async Task<IActionResult> Register([FromBody] CreateUserDto dto)
             {
-                return StatusCode(500, new
+                try
                 {
-                    message = "Something went wrong",
-                    error = ex.Message
-                });
+                    var result = await _userService.RegisterUserAsync(dto);
+                    return Ok(new
+                    {
+                        message = "User created",
+                        userId = result.UserId,
+                        token = result.Token
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new
+                    {
+                        message = "Something went wrong",
+                        error = ex.Message
+                    });
+                }
             }
-        }
-        [HttpPost("auto-register/{id}")]
+            [HttpPost("auto-register/{id}")]
         public async Task<IActionResult> AutoRegister(Guid id)
         {
             try

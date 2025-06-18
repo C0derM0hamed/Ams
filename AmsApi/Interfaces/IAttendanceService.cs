@@ -10,7 +10,7 @@
         Task DeleteAllAsync();
         Task DeleteAllForSubjectAsync(Guid subjectId);
         Task<AttendanceReportDto> GenerateReportAsync(Guid subjectId);
-        Task<List<CalendarSubjectDateDto>> GetCalendarDatesAsync();
+       
         Task<AttendanceDto> CreateByFaceAsync(IFormFile image, Guid subjectId);
 
     }

@@ -194,19 +194,7 @@ namespace AmsApi.Services
 
             return report;
         }
-        public async Task<List<CalendarSubjectDateDto>> GetCalendarDatesAsync()
-        {
-            return await _context.SubjectDates
-                .Include(sd => sd.Subject)
-                .Select(sd => new CalendarSubjectDateDto
-                {
-                    SubjectName = sd.Subject.Name,
-                    DayOfWeek = sd.DayOfWeek,
-                    StartTime = sd.StartTime,
-                    EndTime = sd.EndTime
-                })
-                .ToListAsync();
-        }
+      
 
         public async Task<AttendanceDto> CreateByFaceAsync(IFormFile image, Guid subjectId)
         {

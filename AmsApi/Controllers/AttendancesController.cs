@@ -110,16 +110,10 @@ namespace AmsApi.Controllers
             return Ok(report);
         }
 
-        [HttpGet("calendar")]
-        [Authorize(Roles = "Admin,Instructor,Attendee")]
-        public async Task<IActionResult> GetCalendar()
-        {
-            var dates = await _attendanceService.GetCalendarDatesAsync();
-            return Ok(dates);
-        }
+    
 
         [HttpPost("face-checkin")]
-        [Authorize(Roles = "Admin,Instructor")]
+        [Authorize(Roles = "Admin,Instructor,instructor")]
         public async Task<IActionResult> CheckInByFace([FromForm] IFormFile image, [FromQuery] Guid subjectId)
         {
             try

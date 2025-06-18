@@ -203,6 +203,12 @@ public async Task<IActionResult> UploadImage(Guid attendee_id, [FromForm] IFormF
             var deletedCount = await _attendeeService.DeleteAllAsync();
             return Ok(new { message = $"Deleted {deletedCount} attendees successfully." });
         }
-
+        [HttpGet("calendar")]
+        [Authorize(Roles = "Attendee")]
+        public async Task<IActionResult> GetCalendar()
+        {
+            var dates = await _attendeeService.GetCalendarDatesAsync();
+            return Ok(dates);
+        }
     }
 }

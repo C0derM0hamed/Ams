@@ -25,7 +25,7 @@ namespace AmsApi.Services
             if (!await _roleManager.RoleExistsAsync(dto.Role))
                 await _roleManager.CreateAsync(new IdentityRole(dto.Role));
 
-            // إنشاء المستخدم
+            // إنشاء المستخدم بنفس الـ ID الجاي من Attendee أو Instructor
             var user = new AppUser
             {
                 FullName = dto.FullName,
@@ -75,6 +75,7 @@ namespace AmsApi.Services
 
                 var dto = new CreateUserDto
                 {
+                    Id = id, // إضافة الـ ID هنا ليكون نفسه
                     FullName = attendee.FullName,
                     Email = attendee.Email,
                     Password = attendee.Password,
@@ -94,6 +95,7 @@ namespace AmsApi.Services
 
                 var dto = new CreateUserDto
                 {
+                    Id = id, // إضافة الـ ID هنا ليكون نفسه
                     FullName = instructor.FullName,
                     Email = instructor.Email,
                     Password = instructor.Password,
@@ -105,7 +107,5 @@ namespace AmsApi.Services
 
             throw new Exception("No Attendee or Instructor found with this ID");
         }
-
-
     }
 }
